@@ -1,0 +1,27 @@
+# dependencies / build
+/node_modules
+/.next/
+/out/
+*.tsbuildinfo
+next-env.d.ts
+
+# env — ห้าม commit key
+.env*
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
+
+# ข้อมูลจริง — เอกสารรถ/ประกัน/สินเชื่อ ห้ามขึ้น repo public เด็ดขาด
+*.xlsx
+*.xls
+*.pdf
+*.jpg
+*.jpeg
+*.png
+Thumbs.db
+local-data/
+
+# แผนงานมีข้อมูลจริง (ทะเบียนรถ/ประกัน) — เก็บในเครื่องเท่านั้น
+FLEET-PLAN.md
