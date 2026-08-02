@@ -39,6 +39,8 @@ jobs:
           NEXT_PUBLIC_BASE_PATH: /fleet-app
 
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true    # เปิด GitHub Pages ให้อัตโนมัติถ้ายังไม่ได้เปิด
 
       - uses: actions/upload-pages-artifact@v3
         with:
