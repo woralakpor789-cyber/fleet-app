@@ -32,9 +32,10 @@ jobs:
       - name: Build static site
         run: npm run build
         env:
-          # ตั้งใน repo: Settings > Secrets and variables > Actions > Variables
-          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          # ใส่ค่าตรงนี้เลย ไม่ต้องพึ่ง repo variables (ย้าย repo ไปบัญชีไหนก็ build ได้)
+          # anon key เป็นค่าสาธารณะโดยออกแบบ — ฝังอยู่ในไฟล์ JS ของเว็บอยู่แล้ว ความปลอดภัยจริงอยู่ที่ RLS
+          NEXT_PUBLIC_SUPABASE_URL: https://ineeeczrtiufrzsvzehd.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImluZWVlY3pydGl1ZnJ6c3Z6ZWhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxMzIyNzQsImV4cCI6MjA5NzcwODI3NH0.-9KemcJUak1Q1WQTUnEb5wrrtCEj7u2VV_GDYtvhw-o
           # basePath ฮาร์ดโค้ดให้ตรงชื่อ repo (fleet-app)
           NEXT_PUBLIC_BASE_PATH: /fleet-app
 
