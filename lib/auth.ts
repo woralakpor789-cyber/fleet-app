@@ -28,7 +28,9 @@ export async function signOut(): Promise<void> {
 
 /**
  * เช็คสิทธิ์เข้า Fleet ผ่าน RPC my_access ของ SalesOS (DB ตัดสินเอง ใช้ได้ใต้ RLS)
- * ผ่านเมื่อ: เป็นแอดมิน หรือ role = stock (backoffice)
+ * ผ่านเมื่อ: เป็นแอดมิน · role = stock (backoffice) · หรืออีเมลอยู่ใน fleetEmails
+ * fleetEmails = รายชื่อเฉพาะ FleetOS เก็บใน app_config — ให้สิทธิ์คนนอก stock ได้
+ * โดยไม่ต้องเปลี่ยน role ใน SalesOS (เช่น เซลล์ที่ต้องดูข้อมูลรถ)
  * โหมด local (ไม่มี Supabase env) → ให้ผ่านเพื่อ dev ได้
  */
 export async function checkFleetAccess(): Promise<{ ok: boolean; reason: string }> {
@@ -41,10 +43,28 @@ export async function checkFleetAccess(): Promise<{ ok: boolean; reason: string 
     const d = data as { user: { role?: string; status?: string } | null; is_admin: boolean };
     if (d.is_admin) return { ok: true, reason: "admin" };
     const u = d.user;
-    if (u && (u.status ?? "approved") === "approved" && u.role === "stock")
-      return { ok: true, reason: "stock" };
+    const approved = !!u && (u.status ?? "approved") === "approved";
+    if (approved && u!.role === "stock") return { ok: true, reason: "stock" };
+    // รายชื่อเฉพาะ FleetOS (อ่าน app_config ได้เมื่อเป็นผู้ใช้ที่อนุมัติแล้ว)
+    if (approved && (await inFleetList(sess.session.user.email))) {
+      return { ok: true, reason: "fleet_list" };
+    }
     return { ok: false, reason: "forbidden" };
   } catch {
     return { ok: false, reason: "error" };
+  }
+}
+
+/** อีเมลนี้อยู่ในรายชื่อ fleetEmails ของ app_config หรือไม่ */
+async function inFleetList(email: string | undefined): Promise<boolean> {
+  if (!email || !supabase) return false;
+  try {
+    const { data, error } = await supabase
+      .from("app_config").select("data").eq("id", 1).maybeSingle();
+    if (error || !data) return false;
+    const list = (data as { data?: { fleetEmails?: string[] } }).data?.fleetEmails ?? [];
+    return list.map((e) => e.trim().toLowerCase()).includes(email.trim().toLowerCase());
+  } catch {
+    return false;
   }
 }
