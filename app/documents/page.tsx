@@ -3,7 +3,8 @@
 // เฟส 2 — เอกสาร ภาษี ประกัน + เคลม: แจ้งเตือนหมดอายุ 60/30/7 วัน + ประวัติ + การเคลม
 import { useEffect, useMemo, useState } from "react";
 import FleetShell from "@/components/FleetShell";
-import { AlertTriangle, FileText, Pencil, Plus, ShieldAlert, Trash2 } from "lucide-react";
+import { AlertTriangle, FileText, Pencil, Plus, ShieldAlert, Trash2, Upload } from "lucide-react";
+import DocImport from "@/components/DocImport";
 import {
   CLAIM_STATUSES, DOC_TYPES, daysToExpiry, expiryLevel, fmtBaht, fmtDate,
   type Claim, type Vehicle, type VehicleDoc,
@@ -32,6 +33,7 @@ export default function DocumentsPage() {
   const [fType, setFType] = useState("");
   const [editDoc, setEditDoc] = useState<Partial<VehicleDoc> | null>(null);
   const [editClaim, setEditClaim] = useState<Partial<Claim> | null>(null);
+  const [importing, setImporting] = useState(false);
 
   const reload = async () => {
     try {
@@ -74,10 +76,16 @@ export default function DocumentsPage() {
         </h1>
         <div className="flex gap-2">
           {tab === "docs" ? (
-            <button onClick={() => setEditDoc({})}
-              className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium px-4 py-2 rounded-xl">
-              <Plus className="w-4 h-4" /> เพิ่มเอกสาร
-            </button>
+            <>
+              <button onClick={() => setImporting(true)}
+                className="flex items-center gap-1.5 bg-white border border-teal-600 text-teal-700 hover:bg-teal-50 text-sm font-medium px-4 py-2 rounded-xl">
+                <Upload className="w-4 h-4" /> นำเข้าจากไฟล์
+              </button>
+              <button onClick={() => setEditDoc({})}
+                className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium px-4 py-2 rounded-xl">
+                <Plus className="w-4 h-4" /> เพิ่มเอกสาร
+              </button>
+            </>
           ) : (
             <button onClick={() => setEditClaim({})}
               className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium px-4 py-2 rounded-xl">
@@ -246,6 +254,10 @@ export default function DocumentsPage() {
         <ClaimModal init={editClaim} vehicles={vehicles}
           onClose={() => setEditClaim(null)}
           onSaved={() => { setEditClaim(null); reload(); }} />
+      )}
+      {importing && (
+        <DocImport vehicles={vehicles} existingDocs={docs}
+          onClose={() => setImporting(false)} onSaved={reload} />
       )}
     </FleetShell>
   );

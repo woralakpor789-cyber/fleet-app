@@ -50,6 +50,14 @@ export async function upsertDoc(d: Partial<VehicleDoc> & { id?: string }): Promi
   return data as VehicleDoc;
 }
 
+/** บันทึกเอกสารหลายรายการพร้อมกัน (ตัวนำเข้าเอกสาร) — คืนรายการที่บันทึกจริง */
+export async function insertDocsBulk(rows: Partial<VehicleDoc>[]): Promise<VehicleDoc[]> {
+  if (!rows.length) return [];
+  const { data, error } = await db().from("fleet_documents").insert(rows).select();
+  if (error) throw error;
+  return (data ?? []) as VehicleDoc[];
+}
+
 export async function softDeleteDoc(id: string): Promise<void> {
   const { error } = await db().from("fleet_documents")
     .update({ deleted_at: new Date().toISOString() }).eq("id", id);
