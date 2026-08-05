@@ -50,6 +50,34 @@ export async function upsertDoc(d: Partial<VehicleDoc> & { id?: string }): Promi
   return data as VehicleDoc;
 }
 
+// ---------- ไฟล์แนบ (Supabase Storage — bucket ปิด) ----------
+const BUCKET = "fleet-docs";
+
+/** ทำชื่อไฟล์ให้ปลอดภัยสำหรับ Storage (ชื่อไทยใช้เป็น key ไม่ได้) */
+function safeName(name: string): string {
+  const ext = name.includes(".") ? name.slice(name.lastIndexOf(".")).toLowerCase() : "";
+  return `${Math.random().toString(36).slice(2, 10)}${ext}`;
+}
+
+/** อัปโหลดไฟล์แนบ → คืน path ที่เก็บ (null ถ้าไม่สำเร็จ) */
+export async function uploadDocFile(file: File, folder = "documents"): Promise<string | null> {
+  try {
+    const path = `${folder}/${new Date().toISOString().slice(0, 7)}/${safeName(file.name)}`;
+    const { error } = await db().storage.from(BUCKET).upload(path, file, { upsert: false });
+    if (error) { console.warn("upload", error); return null; }
+    return path;
+  } catch {
+    return null;
+  }
+}
+
+/** ลิงก์เปิดไฟล์แนบชั่วคราว (หมดอายุใน 1 ชม.) */
+export async function signedDocUrl(path: string): Promise<string | null> {
+  const { data, error } = await db().storage.from(BUCKET).createSignedUrl(path, 3600);
+  if (error || !data) return null;
+  return data.signedUrl;
+}
+
 /** บันทึกเอกสารหลายรายการพร้อมกัน (ตัวนำเข้าเอกสาร) — คืนรายการที่บันทึกจริง */
 export async function insertDocsBulk(rows: Partial<VehicleDoc>[]): Promise<VehicleDoc[]> {
   if (!rows.length) return [];

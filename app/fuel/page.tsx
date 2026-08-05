@@ -3,7 +3,8 @@
 // เฟส 4 — Fuel Management: บันทึกการเติม + กม./ลิตร + บาท/กม. + ธงเตือนผิดปกติ + กราฟ
 import { useEffect, useMemo, useState } from "react";
 import FleetShell from "@/components/FleetShell";
-import { AlertTriangle, Fuel, Pencil, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, Fuel, Pencil, Plus, Trash2, Upload } from "lucide-react";
+import FuelImport from "@/components/FuelImport";
 import {
   Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
@@ -21,6 +22,7 @@ export default function FuelPage() {
   const [fVehicle, setFVehicle] = useState("");
   const [fMonth, setFMonth] = useState("");   // "2026-08"
   const [editing, setEditing] = useState<Partial<FuelLog> | null>(null);
+  const [importing, setImporting] = useState(false);
 
   const reload = async () => {
     try {
@@ -82,10 +84,16 @@ export default function FuelPage() {
         <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
           <Fuel className="w-5 h-5 text-teal-600" /> ต้นทุนน้ำมัน
         </h1>
-        <button onClick={() => setEditing({})}
-          className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium px-4 py-2 rounded-xl">
-          <Plus className="w-4 h-4" /> บันทึกการเติม
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => setImporting(true)}
+            className="flex items-center gap-1.5 bg-white border border-teal-600 text-teal-700 hover:bg-teal-50 text-sm font-medium px-4 py-2 rounded-xl">
+            <Upload className="w-4 h-4" /> นำเข้าบิล
+          </button>
+          <button onClick={() => setEditing({})}
+            className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium px-4 py-2 rounded-xl">
+            <Plus className="w-4 h-4" /> บันทึกการเติม
+          </button>
+        </div>
       </div>
 
       {/* สรุป */}
@@ -201,6 +209,10 @@ export default function FuelPage() {
         <FuelModal init={editing} vehicles={vehicles}
           onClose={() => setEditing(null)}
           onSaved={() => { setEditing(null); reload(); }} />
+      )}
+      {importing && (
+        <FuelImport vehicles={vehicles}
+          onClose={() => setImporting(false)} onSaved={reload} />
       )}
     </FleetShell>
   );

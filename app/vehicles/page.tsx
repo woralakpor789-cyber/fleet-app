@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import FleetShell from "@/components/FleetShell";
 import { Car, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import {
-  BRANCHES, VEHICLE_STATUSES, VTYPES, bookValue, fmtBaht, fmtDate, type Vehicle,
+  BRANCHES, FINANCE_STATUSES, VEHICLE_STATUSES, VTYPES, bookValue, fmtBaht, fmtDate, type Vehicle,
 } from "@/lib/types";
 import { listVehicles, softDeleteVehicle, upsertVehicle } from "@/lib/fleetApi";
 
@@ -103,6 +103,7 @@ export default function VehiclesPage() {
                 <th className="px-2 py-3 text-right">ราคาซื้อ</th>
                 <th className="px-2 py-3 text-right">มูลค่าตามบัญชี</th>
                 <th className="px-2 py-3">สถานะ</th>
+                <th className="px-2 py-3">กรรมสิทธิ์</th>
                 <th className="px-2 py-3"></th>
               </tr>
             </thead>
@@ -127,6 +128,14 @@ export default function VehiclesPage() {
                       v.status === "ซ่อม" ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-500"
                     }`}>{v.status}</span>
                   </td>
+                  <td className="px-2 py-2.5">
+                    {v.finance_status ? (
+                      <span className={`px-2 py-0.5 rounded-full text-xs ${
+                        v.finance_status === "ไฟแนนซ์"
+                          ? "bg-orange-50 text-orange-700" : "bg-sky-50 text-sky-700"
+                      }`}>{v.finance_status}</span>
+                    ) : <span className="text-slate-300">—</span>}
+                  </td>
                   <td className="px-2 py-2.5 whitespace-nowrap">
                     <button onClick={() => setEditing(v)} className="p-1.5 text-slate-400 hover:text-teal-600">
                       <Pencil className="w-4 h-4" />
@@ -138,7 +147,7 @@ export default function VehiclesPage() {
                 </tr>
               ))}
               {!filtered.length && (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-400">ไม่พบรถ</td></tr>
+                <tr><td colSpan={10} className="px-4 py-8 text-center text-slate-400">ไม่พบรถ</td></tr>
               )}
             </tbody>
           </table>
@@ -182,7 +191,8 @@ function VehicleModal({
         driver_name: f.driver_name || null, purchase_date: f.purchase_date || null,
         purchase_price: f.purchase_price || null,
         depreciation_years: f.depreciation_years || 5, salvage_pct: f.salvage_pct ?? 10,
-        status: f.status || "ใช้งาน", odometer: f.odometer || null, note: f.note || null,
+        status: f.status || "ใช้งาน", finance_status: f.finance_status || null,
+        odometer: f.odometer || null, note: f.note || null,
       };
       await upsertVehicle(payload);
       onSaved();
@@ -236,6 +246,11 @@ function VehicleModal({
           <div><span className={lbl}>สถานะ</span>
             <select className={inp} value={f.status ?? "ใช้งาน"} onChange={(e) => set("status", e.target.value)}>
               {VEHICLE_STATUSES.map((s) => <option key={s}>{s}</option>)}
+            </select></div>
+          <div><span className={lbl}>สถานะกรรมสิทธิ์</span>
+            <select className={inp} value={f.finance_status ?? ""} onChange={(e) => set("finance_status", e.target.value || null)}>
+              <option value="">— ไม่ระบุ —</option>
+              {FINANCE_STATUSES.map((s) => <option key={s}>{s}</option>)}
             </select></div>
           <div><span className={lbl}>อายุค่าเสื่อม (ปี)</span>
             <input type="number" className={inp} value={f.depreciation_years ?? 5} onChange={(e) => set("depreciation_years", e.target.value ? +e.target.value : 5)} /></div>

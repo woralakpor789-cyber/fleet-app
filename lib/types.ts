@@ -19,6 +19,7 @@ export type Vehicle = {
   depreciation_years: number | null;
   salvage_pct: number | null;
   status: string;                // ใช้งาน/ซ่อม/ขายแล้ว
+  finance_status: string | null; // ปลอดภาระ/มีเล่มแล้ว · ไฟแนนซ์ (คนละเรื่องกับ status)
   odometer: number | null;
   note: string | null;
   created_at: string;
@@ -37,6 +38,7 @@ export type VehicleDoc = {
   expiry_date: string;
   cost: number | null;
   note: string | null;
+  file_path: string | null;      // ไฟล์แนบใน Storage (bucket fleet-docs)
   created_at: string;
   deleted_at: string | null;
 };
@@ -59,6 +61,7 @@ export type Claim = {
 // กติกา: FleetOS ดูแลเฉพาะยานพาหนะบริษัท — ไม่มีโฟล์คลิฟท์ (โฟล์คลิฟท์อยู่ระบบ SalesOS แยกขาดจากกัน)
 export const VTYPES = ["เก๋ง", "กระบะ", "บรรทุก", "เทรลเลอร์", "อื่นๆ"];
 export const VEHICLE_STATUSES = ["ใช้งาน", "ซ่อม", "ขายแล้ว"];
+export const FINANCE_STATUSES = ["ปลอดภาระ/มีเล่มแล้ว", "ไฟแนนซ์"];
 export const BRANCHES = ["สมุทรปราการ", "ชลบุรี", "ขอนแก่น"];
 export const DOC_TYPES = ["พ.ร.บ.", "ประกันภัย", "ภาษีประจำปี", "ตรวจสภาพ", "อื่นๆ"];
 export const CLAIM_STATUSES = ["แจ้งเคลม", "รอประเมิน", "กำลังซ่อม", "จบเคลม"];
@@ -202,6 +205,7 @@ export type FuelLog = {
   station: string | null;
   full_tank: boolean;
   note: string | null;
+  file_path: string | null;      // รูปบิลใน Storage
   created_at: string;
   deleted_at: string | null;
 };

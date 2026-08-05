@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { DOC_TYPES, type Vehicle, type VehicleDoc } from "@/lib/types";
 import { emptyDoc, readDocFiles, type ParsedDoc } from "@/lib/docImport";
-import { insertDocsBulk, softDeleteDoc } from "@/lib/fleetApi";
+import { insertDocsBulk, softDeleteDoc, uploadDocFile } from "@/lib/fleetApi";
 
 export default function DocImport({
   vehicles, existingDocs, onClose, onSaved,
@@ -21,6 +21,9 @@ export default function DocImport({
 }) {
   const [rows, setRows] = useState<ParsedDoc[]>([]);
   const [busy, setBusy] = useState<{ done: number; total: number; name: string } | null>(null);
+  const [ocrOn, setOcrOn] = useState(true);        // อ่านรูป/สแกนด้วย OCR (ช้าแต่ได้วันที่)
+  const [keepFile, setKeepFile] = useState(true);  // เก็บไฟล์ต้นฉบับไว้ในระบบ
+  const [ocrMsg, setOcrMsg] = useState("");
   const [notice, setNotice] = useState("");
   const [err, setErr] = useState("");
   const [saving, setSaving] = useState(false);
@@ -40,9 +43,12 @@ export default function DocImport({
     setErr(""); setNotice("");
     setBusy({ done: 0, total: files.length, name: files[0].name });
     try {
-      const parsed = await readDocFiles(files, vehicles, (done, total, name) =>
-        setBusy({ done, total, name })
-      );
+      const parsed = await readDocFiles(files, vehicles, {
+        useOcr: ocrOn,
+        onFile: (done, total, name) => { setBusy({ done, total, name }); setOcrMsg(""); },
+        onOcr: (pct, status) => setOcrMsg(status ? `OCR ${pct}% (${status})` : ""),
+      });
+      setOcrMsg("");
       setRows((r) => [...r, ...parsed]);
       const ok = parsed.filter((p) => p.vehicle_id && p.expiry_date).length;
       setNotice(
@@ -82,7 +88,10 @@ export default function DocImport({
         const k = `${r.vehicle_id}|${r.doc_type}|${r.expiry_date}`;
         if (seen.has(k)) { skippedDup++; continue; }
         seen.add(k);
+        // เก็บไฟล์ต้นฉบับไว้ดูย้อนหลัง (ไม่สำเร็จก็ยังบันทึกข้อมูลต่อ)
+        const filePath = keepFile && r.file ? await uploadDocFile(r.file) : null;
         payload.push({
+          file_path: filePath,
           vehicle_id: r.vehicle_id, doc_type: r.doc_type,
           provider: r.provider || null, policy_no: r.policy_no || null,
           insurance_class: r.insurance_class || null,
@@ -175,10 +184,26 @@ export default function DocImport({
                   className="hidden" onChange={(e) => handleFiles(e.target.files)} />
               </div>
 
+              {/* ตัวเลือกการอ่าน */}
+              <div className="flex flex-wrap gap-4 mt-3 text-sm">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={ocrOn} onChange={(e) => setOcrOn(e.target.checked)}
+                    className="w-4 h-4 accent-teal-600" />
+                  <span className="text-slate-600">อ่านรูป/ไฟล์สแกนด้วย OCR</span>
+                  <span className="text-xs text-slate-400">(ช้ากว่า ~10 วิ/ไฟล์ แต่ได้วันหมดอายุ)</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={keepFile} onChange={(e) => setKeepFile(e.target.checked)}
+                    className="w-4 h-4 accent-teal-600" />
+                  <span className="text-slate-600">เก็บไฟล์ต้นฉบับไว้ในระบบ</span>
+                </label>
+              </div>
+
               {busy && (
                 <p className="mt-3 text-sm text-teal-700 flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   กำลังอ่าน {busy.done}/{busy.total} — {busy.name}
+                  {ocrMsg && <span className="text-slate-400">· {ocrMsg}</span>}
                 </p>
               )}
               {notice && <p className="mt-3 text-sm text-slate-600">{notice}</p>}

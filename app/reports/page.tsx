@@ -102,16 +102,19 @@ export default function ReportsPage() {
     [
       ["ทะเบียนทรัพย์สินยานพาหนะ ณ วันที่", new Date().toISOString().slice(0, 10)],
       [],
-      ["ทะเบียน", "ประเภท", "ยี่ห้อ/รุ่น", "เลขตัวถัง", "สาขา", "วันที่ซื้อ", "ราคาซื้อ",
-        "อายุค่าเสื่อม (ปี)", "ซาก (%)", "ค่าเสื่อมสะสม", "มูลค่าตามบัญชี", "สถานะ"],
+      ["ทะเบียน", "ประเภท", "ยี่ห้อ/รุ่น", "เลขตัวถัง", "เลขเครื่อง", "จังหวัด", "สาขา",
+        "วันที่ซื้อ", "ราคาซื้อ", "อายุค่าเสื่อม (ปี)", "ซาก (%)", "ค่าเสื่อมสะสม",
+        "มูลค่าตามบัญชี", "สถานะ", "กรรมสิทธิ์"],
       ...vehicles.map((v) => {
         const bv = bookValue(v);
         const accDep = v.purchase_price != null && bv != null ? v.purchase_price - bv : null;
         return [
           nameOf(v), v.vtype, [v.brand, v.model].filter(Boolean).join(" "), v.vin ?? "",
-          v.branch ?? "", v.purchase_date ?? "", v.purchase_price ?? "",
+          v.engine_no ?? "", v.plate_province ?? "", v.branch ?? "",
+          v.purchase_date ?? "", v.purchase_price ?? "",
           v.depreciation_years ?? 5, v.salvage_pct ?? 10,
-          accDep != null ? Math.round(accDep) : "", bv != null ? Math.round(bv) : "", v.status,
+          accDep != null ? Math.round(accDep) : "", bv != null ? Math.round(bv) : "",
+          v.status, v.finance_status ?? "",
         ];
       }),
     ]

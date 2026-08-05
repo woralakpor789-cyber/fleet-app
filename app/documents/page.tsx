@@ -3,14 +3,14 @@
 // เฟส 2 — เอกสาร ภาษี ประกัน + เคลม: แจ้งเตือนหมดอายุ 60/30/7 วัน + ประวัติ + การเคลม
 import { useEffect, useMemo, useState } from "react";
 import FleetShell from "@/components/FleetShell";
-import { AlertTriangle, FileText, Pencil, Plus, ShieldAlert, Trash2, Upload } from "lucide-react";
+import { AlertTriangle, FileText, Paperclip, Pencil, Plus, ShieldAlert, Trash2, Upload } from "lucide-react";
 import DocImport from "@/components/DocImport";
 import {
   CLAIM_STATUSES, DOC_TYPES, daysToExpiry, expiryLevel, fmtBaht, fmtDate,
   type Claim, type Vehicle, type VehicleDoc,
 } from "@/lib/types";
 import {
-  listClaims, listDocs, listVehicles, softDeleteClaim, softDeleteDoc,
+  listClaims, listDocs, listVehicles, signedDocUrl, softDeleteClaim, softDeleteDoc,
   upsertClaim, upsertDoc,
 } from "@/lib/fleetApi";
 
@@ -169,6 +169,17 @@ export default function DocumentsPage() {
                       </td>
                       <td className="px-2 py-2.5 text-right">{fmtBaht(d.cost)}</td>
                       <td className="px-2 py-2.5 whitespace-nowrap">
+                        {d.file_path && (
+                          <button title="เปิดไฟล์แนบ"
+                            onClick={async () => {
+                              const url = await signedDocUrl(d.file_path!);
+                              if (url) window.open(url, "_blank", "noopener");
+                              else alert("เปิดไฟล์ไม่สำเร็จ");
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-sky-600">
+                            <Paperclip className="w-4 h-4" />
+                          </button>
+                        )}
                         <button onClick={() => setEditDoc(d)} className="p-1.5 text-slate-400 hover:text-teal-600">
                           <Pencil className="w-4 h-4" />
                         </button>
