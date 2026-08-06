@@ -7,7 +7,10 @@ function db() {
   return supabase;
 }
 
-export type DriverVehicle = { id: string; plate: string; nickname: string | null };
+export type DriverVehicle = {
+  id: string; plate: string; nickname: string | null;
+  odometer?: number | null;   // เลขไมล์ล่าสุด — ไว้เตือนเมื่อคนขับกรอกย้อนหลัง
+};
 
 export type MySubmission = {
   id: string;

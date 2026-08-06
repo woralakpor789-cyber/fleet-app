@@ -3,16 +3,19 @@
 // ถ่ายรูปบิลมาลากใส่ → OCR ในเครื่อง → ตารางตรวจ/แก้ → บันทึกทีเดียว
 
 import { useMemo, useRef, useState } from "react";
+// (useMemo ใช้กับดัชนีบัตร)
 import { AlertTriangle, CheckCircle, Fuel, Loader2, Plus, Trash2, Undo2, Upload, X } from "lucide-react";
 import { FUEL_TYPES, type Vehicle, type FuelLog } from "@/lib/types";
-import { isImageFile, isPdfFile, looksScanned, matchVehicle, ocrImage, ocrScannedPdf, platesFromName, readPdfText } from "@/lib/docImport";
-import { buildFuelRow, emptyFuel, type ParsedFuel } from "@/lib/docImport/fuelParse";
-import { saveFuelLog, softDeleteFuelLog, uploadDocFile } from "@/lib/fleetApi";
+import { isImageFile, isPdfFile, looksScanned, matchVehicle, normalizePlate, ocrImage, ocrScannedPdf, readPdfText } from "@/lib/docImport";
+import { buildRowFromReceipt, emptyFuel, type ParsedFuel } from "@/lib/docImport/fuelParse";
+import { matchVehicleByTxn, saveFuelBill, softDeleteFuelLog, uploadDocFile } from "@/lib/fleetApi";
+import type { FuelCard } from "@/lib/types";
 
 export default function FuelImport({
-  vehicles, onClose, onSaved,
+  vehicles, cards, onClose, onSaved,
 }: {
   vehicles: Vehicle[];
+  cards: FuelCard[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -25,6 +28,16 @@ export default function FuelImport({
   const [result, setResult] = useState<{ saved: number; skipped: number; ids: string[] } | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // ดัชนีบัตร: 4 ตัวท้าย → รถ (ใช้จับคู่จากเลขบัตรบนบิล แม่นกว่าอ่านทะเบียนไทย)
+  const cardIndex = useMemo(
+    () => cards.map((c) => ({
+      last4: (c.card_no.match(/(\d{4})\s*$/)?.[1]) ?? "",
+      vehicle_id: c.vehicle_id,
+      account: c.account_name ?? "",
+    })).filter((c) => c.last4),
+    [cards]
+  );
 
   const handleFiles = async (list: FileList | File[] | null) => {
     const files = list ? Array.from(list) : [];
@@ -48,8 +61,26 @@ export default function FuelImport({
         setErr(`อ่าน "${f.name}" ไม่สำเร็จ`);
       }
       setOcrMsg("");
-      const v = matchVehicle(path, vehicles);
-      out.push(buildFuelRow(`f${Date.now()}${i}`, f.name, text, v?.id ?? null, platesFromName(path)[0] ?? null, f));
+      const row = buildRowFromReceipt(
+        `f${Date.now()}${i}`, f.name, text, cardIndex,
+        (plate) => {
+          const hit = vehicles.find((v) => normalizePlate(v.plate) === normalizePlate(plate)
+            || (v.previous_plate && normalizePlate(v.previous_plate) === normalizePlate(plate)));
+          return hit?.id ?? matchVehicle(path, vehicles)?.id ?? null;
+        },
+        f,
+      );
+      // OCR อ่านทะเบียน/เลขบัตรไม่ออก → หารถจากรายการรูดบัตร (วันที่+ยอดเงิน) ซึ่งตรวจแล้วว่าถูก
+      if (!row.vehicle_id && row.fill_date && row.amount) {
+        const hits = await matchVehicleByTxn(row.fill_date, row.amount);
+        if (hits.length === 1) {
+          row.vehicle_id = hits[0];
+          row.flags = [...row.flags.filter((x) => !x.startsWith("จับคู่รถไม่ได้")), "จับคู่รถจากรายการรูดบัตร"];
+        } else if (hits.length > 1) {
+          row.flags = [...row.flags, `เข้าได้หลายคัน (${hits.length}) — เลือกเอง`];
+        }
+      }
+      out.push(row);
     }
     setRows((r) => [...r, ...out]);
     setBusy(null);
@@ -73,13 +104,16 @@ export default function FuelImport({
       for (const r of rows) {
         if (!r.vehicle_id || !r.fill_date || !r.liters || !r.amount) { skipped++; continue; }
         const filePath = keepFile && r.file ? await uploadDocFile(r.file, "fuel") : null;
-        const saved = await saveFuelLog({
+        const saved = await saveFuelBill({
           vehicle_id: r.vehicle_id, fill_date: r.fill_date,
           odometer: r.odometer ?? null, liters: r.liters, amount: r.amount,
           fuel_type: r.fuel_type || null, station: r.station || null,
-          full_tank: true, file_path: filePath,
+          full_tank: false, file_path: filePath,
+          tax_invoice_no: r.tax_invoice_no,
+          vat_amount: r.vat_amount ?? Math.round((r.amount * 7 / 107) * 100) / 100,
+          invoice_status: "ส่งบัญชีแล้ว",
           note: r.fileName ? `นำเข้าจากบิล ${r.fileName}` : null,
-        }, { vehicle: vehicles.find((v) => v.id === r.vehicle_id) });
+        }, vehicles.find((v) => v.id === r.vehicle_id));
         ids.push(saved.id);
       }
       setResult({ saved: ids.length, skipped, ids });
@@ -179,6 +213,7 @@ export default function FuelImport({
                         <th className="px-2 py-2">บาท *</th>
                         <th className="px-2 py-2">ชนิด</th>
                         <th className="px-2 py-2">ปั๊ม</th>
+                        <th className="px-2 py-2">เลขที่ใบกำกับ</th>
                         <th className="px-2 py-2">สถานะ</th>
                         <th className="px-2 py-2"></th>
                       </tr>
@@ -222,6 +257,10 @@ export default function FuelImport({
                             <td className="px-2 py-2 w-24">
                               <input className={inp} value={r.station ?? ""}
                                 onChange={(e) => edit(r.key, { station: e.target.value })} />
+                            </td>
+                            <td className="px-2 py-2 w-32">
+                              <input className={inp} value={r.tax_invoice_no ?? ""}
+                                onChange={(e) => edit(r.key, { tax_invoice_no: e.target.value })} />
                             </td>
                             <td className="px-2 py-2 max-w-36">
                               {bad ? (

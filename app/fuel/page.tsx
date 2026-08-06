@@ -7,7 +7,8 @@ import { AlertTriangle, Fuel, Pencil, Plus, Trash2, Upload } from "lucide-react"
 import FuelImport from "@/components/FuelImport";
 import BillCapture from "@/components/BillCapture";
 import { Camera } from "lucide-react";
-import { listStaff } from "@/lib/fleetApi";
+import { listCards, listStaff } from "@/lib/fleetApi";
+import type { FuelCard } from "@/lib/types";
 import {
   Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
@@ -30,6 +31,7 @@ export default function FuelPage() {
   const [importing, setImporting] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [staffNames, setStaffNames] = useState<string[]>([]);
+  const [cards, setCards] = useState<FuelCard[]>([]);
   const [subs, setSubs] = useState<FuelSubmission[]>([]);
   const [tab, setTab] = useState<"logs" | "review">("logs");
 
@@ -38,6 +40,7 @@ export default function FuelPage() {
       const [v, l, s] = await Promise.all([listVehicles(), listFuelLogs(), listSubmissions()]);
       setVehicles(v); setLogs(l); setSubs(s); setErr("");
       listStaff().then((st) => setStaffNames(st.map((x) => x.name))).catch(() => {});
+      listCards().then(setCards).catch(() => {});
     } catch (e) {
       setErr(e instanceof Error ? e.message : "โหลดข้อมูลไม่สำเร็จ");
     } finally {
@@ -254,7 +257,7 @@ export default function FuelPage() {
           onSaved={() => { setEditing(null); reload(); }} />
       )}
       {importing && (
-        <FuelImport vehicles={vehicles}
+        <FuelImport vehicles={vehicles} cards={cards}
           onClose={() => setImporting(false)} onSaved={reload} />
       )}
       {capturing && (

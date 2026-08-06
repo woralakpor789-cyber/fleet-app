@@ -154,6 +154,13 @@ function SendForm({ me, preVehicle }: { me: Me; preVehicle: string | null }) {
     return l > 0 && a > 0 ? a / l : null;
   }, [liters, amount]);
 
+  // เลขไมล์ล่าสุดของรถคันที่เลือก — ไว้เตือนถ้าคนขับพิมพ์ย้อนหลัง
+  const lastOdo = useMemo(() => {
+    const v = vehicles.find((x) => x.id === vehicleId) as (DriverVehicle & { odometer?: number }) | undefined;
+    return v?.odometer ?? null;
+  }, [vehicles, vehicleId]);
+  const odoBack = lastOdo != null && +odometer > 0 && +odometer < lastOdo;
+
   const pickFile = async (f: File | null) => {
     if (!f) return;
     setFile(f);
@@ -174,6 +181,7 @@ function SendForm({ me, preVehicle }: { me: Me; preVehicle: string | null }) {
     if (!vehicleId) { setErr("เลือกรถก่อน"); return; }
     if (!(+amount > 0)) { setErr("กรอกยอดเงิน"); return; }
     if (!(+liters > 0)) { setErr("กรอกจำนวนลิตร"); return; }
+    if (!(+odometer > 0)) { setErr("กรอกเลขไมล์บนหน้าปัด (ดูได้จากบิลหรือหน้าปัดรถ)"); return; }
     if (!name.trim()) { setErr("ยังไม่มีชื่อผู้ส่ง — เปิด \"ระบุเพิ่มเติม\" แล้วกรอกชื่อ"); return; }
     if (!fillDate) { setErr("เลือกวันที่"); return; }
     setBusy(true); setErr("");
@@ -264,9 +272,17 @@ function SendForm({ me, preVehicle }: { me: Me; preVehicle: string | null }) {
         <div><span className={lbl}>จำนวนลิตร *</span>
           <input type="number" inputMode="decimal" step="0.01" className={inp + " text-lg font-semibold"}
             value={liters} onChange={(e) => setLiters(e.target.value)} /></div>
-        <div className="col-span-2"><span className={lbl}>เลขไมล์บนหน้าปัด (กม.) — ช่วยให้คำนวณอัตราสิ้นเปลืองได้</span>
+        <div className="col-span-2"><span className={lbl}>เลขไมล์บนหน้าปัด (กม.) *</span>
           <input type="number" inputMode="numeric" className={inp + " text-lg font-semibold"} value={odometer}
-            onChange={(e) => setOdometer(e.target.value)} placeholder="เช่น 125400" /></div>
+            onChange={(e) => setOdometer(e.target.value)} placeholder="เช่น 125400" />
+          {lastOdo != null && (
+            <p className={`text-xs mt-1 ${odoBack ? "text-red-600 font-medium" : "text-slate-400"}`}>
+              {odoBack
+                ? `⚠️ น้อยกว่าครั้งก่อน (${lastOdo.toLocaleString()} กม.) — ตรวจว่าพิมพ์ถูกไหม`
+                : `ครั้งก่อน ${lastOdo.toLocaleString()} กม.`}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* 3) ที่เหลือซ่อนไว้ — ปกติไม่ต้องแตะ */}

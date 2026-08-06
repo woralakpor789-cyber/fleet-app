@@ -382,6 +382,24 @@ export type CardTxn = {
 
 export const TXN_INVOICE_STATUSES = ["ยังไม่ได้ใบ", "ได้ใบแล้ว", "ส่งบัญชีแล้ว", "หาย", "ไม่มีใบกำกับ"];
 
+/**
+ * หารถจากรายการรูดบัตร ด้วยวันที่+ยอดเงิน
+ * ใช้ตอนอ่านบิลแล้ว OCR อ่านทะเบียน/เลขบัตรไม่ออก — ใบแจ้งยอดเป็นข้อมูลที่ตรวจแล้วว่าถูก
+ * คืน [] ถ้าไม่เจอ · คืนหลายตัวถ้าซ้ำ (ให้คนเลือกเอง)
+ */
+export async function matchVehicleByTxn(date: string, amount: number): Promise<string[]> {
+  const from = new Date(date); from.setDate(from.getDate() - 2);
+  const to = new Date(date); to.setDate(to.getDate() + 2);
+  const { data, error } = await db().from("fleet_card_transactions")
+    .select("vehicle_id")
+    .eq("amount", amount)
+    .gte("trans_date", from.toISOString().slice(0, 10))
+    .lte("trans_date", to.toISOString().slice(0, 10));
+  if (error || !data) return [];
+  return [...new Set((data as { vehicle_id: string | null }[])
+    .map((r) => r.vehicle_id).filter(Boolean) as string[])];
+}
+
 export async function listCardTxns(period: string): Promise<CardTxn[]> {
   const { data, error } = await db().rpc("card_txns_for_period", { p_period: period });
   if (error) throw error;
