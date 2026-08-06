@@ -12,6 +12,20 @@ import { listStaff, listVehicles, softDeleteVehicle, upsertVehicle, type Staff }
 
 const EMPTY: Partial<Vehicle> = { vtype: "กระบะ", status: "ใช้งาน", depreciation_years: 5, salvage_pct: 10 };
 
+/** หัวข้อคั่นในฟอร์ม — ทำให้ฟอร์มยาวๆ อ่านเป็นกลุ่มได้ */
+function SectionHead({ n, title, hint }: { n: number; title: string; hint: string }) {
+  return (
+    <div className="col-span-2 md:col-span-3 mt-2 first:mt-0">
+      <div className="flex items-center gap-2">
+        <span className="w-5 h-5 rounded-full bg-teal-600 text-white text-[11px] flex items-center justify-center shrink-0">{n}</span>
+        <span className="font-semibold text-slate-700 text-sm">{title}</span>
+      </div>
+      <p className="text-xs text-slate-400 ml-7">{hint}</p>
+      <div className="border-b border-slate-100 mt-1.5" />
+    </div>
+  );
+}
+
 export default function VehiclesPage() {
   const [rows, setRows] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -242,6 +256,7 @@ function VehicleModal({
       <div className="bg-white w-full md:max-w-2xl rounded-t-2xl md:rounded-2xl shadow-xl max-h-[92vh] overflow-y-auto p-5">
         <h2 className="font-bold text-slate-800 mb-4">{f.id ? `แก้ไขรถ ${init.plate}` : "เพิ่มรถใหม่"}</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <SectionHead n={1} title="ข้อมูลรถ" hint="ระบุตัวรถ — ใช้ทุกหน้าในระบบ" />
           <div><span className={lbl}>เลขทะเบียน *</span>
             <input className={inp} value={f.plate ?? ""} onChange={(e) => set("plate", e.target.value)} /></div>
           <div><span className={lbl}>จังหวัดทะเบียน</span>
@@ -264,6 +279,7 @@ function VehicleModal({
             <input className={inp} value={f.engine_no ?? ""} onChange={(e) => set("engine_no", e.target.value)} /></div>
           <div><span className={lbl}>สี</span>
             <input className={inp} value={f.color ?? ""} onChange={(e) => set("color", e.target.value)} /></div>
+          <SectionHead n={2} title="การใช้งาน" hint="ใครใช้ อยู่สาขาไหน วิ่งไปเท่าไรแล้ว" />
           <div><span className={lbl}>สาขาประจำ</span>
             <select className={inp} value={f.branch ?? ""} onChange={(e) => set("branch", e.target.value || null)}>
               <option value="">— เลือก —</option>
@@ -277,9 +293,11 @@ function VehicleModal({
                 <option key={s.id} value={s.name}>{s.name}{s.department ? ` · ${s.department}` : ""}</option>
               ))}
             </select></div>
+          <SectionHead n={3} title="ข้อมูลทางบัญชี (ทรัพย์สิน)"
+            hint="ตัวเลขชุดนี้ใช้คำนวณค่าเสื่อมและมูลค่าตามบัญชีในรายงาน — เอาตามทะเบียนทรัพย์สินของฝ่ายบัญชี" />
           <div><span className={lbl}>วันที่ซื้อ</span>
             <input type="date" className={inp} value={f.purchase_date ?? ""} onChange={(e) => set("purchase_date", e.target.value || null)} /></div>
-          <div><span className={lbl}>ราคาซื้อ (บาท)</span>
+          <div><span className={lbl}>ราคาทุน (บาท) — ตามทะเบียนทรัพย์สิน</span>
             <input type="number" className={inp} value={f.purchase_price ?? ""} onChange={(e) => set("purchase_price", e.target.value ? +e.target.value : null)} /></div>
           <div><span className={lbl}>สถานะ</span>
             <select className={inp} value={f.status ?? "ใช้งาน"} onChange={(e) => set("status", e.target.value)}>
@@ -290,9 +308,9 @@ function VehicleModal({
               <option value="">— ไม่ระบุ —</option>
               {FINANCE_STATUSES.map((s) => <option key={s}>{s}</option>)}
             </select></div>
-          <div><span className={lbl}>อายุค่าเสื่อม (ปี)</span>
+          <div><span className={lbl}>อายุค่าเสื่อม (ปี) — ปกติ 5</span>
             <input type="number" className={inp} value={f.depreciation_years ?? 5} onChange={(e) => set("depreciation_years", e.target.value ? +e.target.value : 5)} /></div>
-          <div><span className={lbl}>มูลค่าซาก (%)</span>
+          <div><span className={lbl}>มูลค่าซาก (%) — ปกติ 10</span>
             <input type="number" className={inp} value={f.salvage_pct ?? 10} onChange={(e) => set("salvage_pct", e.target.value ? +e.target.value : 10)} /></div>
           <div><span className={lbl}>เลขไมล์ (กม.)</span>
             <input type="number" className={inp} value={f.odometer ?? ""} onChange={(e) => set("odometer", e.target.value ? +e.target.value : null)} /></div>
@@ -301,8 +319,12 @@ function VehicleModal({
               onChange={(e) => set("in_service_from", e.target.value || null)} /></div>
 
           {/* ปลดประจำการ */}
-          <div className="col-span-2 md:col-span-3 border-t border-slate-100 pt-3 mt-1">
-            <div className="text-sm font-semibold text-slate-700 mb-2">การปลดประจำการ (กรอกเมื่อเลิกใช้รถคันนี้)</div>
+          <div className="col-span-2 md:col-span-3 border-t border-slate-100 pt-3 mt-2">
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-slate-400 text-white text-[11px] flex items-center justify-center shrink-0">4</span>
+              <span className="font-semibold text-slate-700 text-sm">การปลดประจำการ</span>
+            </div>
+            <p className="text-xs text-slate-400 ml-7 mb-2">เว้นว่างไว้ถ้ายังใช้งานอยู่ · กรอกเมื่อขาย/เทิร์น/ตัดจำหน่ายแล้วเท่านั้น</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div><span className={lbl}>วันที่ปลด</span>
                 <input type="date" className={inp} value={f.disposal_date ?? ""}
