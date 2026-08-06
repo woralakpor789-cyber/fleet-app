@@ -88,6 +88,21 @@ export async function submitFuel(i: FuelSubmitInput): Promise<void> {
   if (error) throw error;
 }
 
+/** รายชื่อพนักงาน (ให้คนขับเลือกชื่อตัวเองตอนเช็คอิน) */
+export async function staffNames(): Promise<{ id: string; name: string; department: string | null }[]> {
+  const { data, error } = await db().rpc("driver_staff");
+  if (error) return [];
+  return (data ?? []) as { id: string; name: string; department: string | null }[];
+}
+
+/** เช็คอินว่าวันนี้ขับคันไหน (ย้อนหลังได้ไม่เกิน 3 วัน) */
+export async function checkIn(vehicleId: string, date: string, name: string): Promise<void> {
+  const { error } = await db().rpc("driver_checkin", {
+    p_vehicle: vehicleId, p_date: date, p_name: name,
+  });
+  if (error) throw error;
+}
+
 /** ประวัติที่ตัวเองส่ง (RLS กรองให้เห็นเฉพาะของตัวเอง) */
 export async function mySubmissions(): Promise<MySubmission[]> {
   const { data, error } = await db()

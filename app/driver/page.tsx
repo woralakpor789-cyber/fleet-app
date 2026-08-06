@@ -7,7 +7,8 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
-  Camera, CheckCircle2, ClipboardList, Fuel, Loader2, LogOut, Receipt, Send, ShieldAlert, Truck,
+  CalendarCheck, Camera, CheckCircle2, ClipboardList, Fuel, Loader2, LogOut, Receipt,
+  Send, ShieldAlert, Truck,
 } from "lucide-react";
 import GoogleLoginButton, { type GoogleUser } from "@/components/GoogleLoginButton";
 import { FUEL_TYPES } from "@/lib/types";
@@ -15,8 +16,8 @@ import { signOut } from "@/lib/auth";
 import { ocrImage } from "@/lib/docImport/imageOcr";
 import { parseFuelAmounts } from "@/lib/docImport/fuelParse";
 import {
-  amIDriver, driverVehicles, getContact, myEmail, myOutstandingInvoices, mySubmissions,
-  saveContact, submitFuel, uploadReceipt,
+  amIDriver, checkIn, driverVehicles, getContact, myEmail, myOutstandingInvoices, mySubmissions,
+  saveContact, staffNames, submitFuel, uploadReceipt,
   type DriverVehicle, type MySubmission, type OutstandingInvoice,
 } from "@/lib/driverApi";
 
@@ -37,7 +38,7 @@ function DriverInner() {
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [checking, setChecking] = useState(true);
   const [loginErr, setLoginErr] = useState("");
-  const [tab, setTab] = useState<"send" | "owed" | "history">("send");
+  const [tab, setTab] = useState<"checkin" | "send" | "owed" | "history">("checkin");
 
   const verify = useCallback(async (fallbackName?: string) => {
     const email = await myEmail();
@@ -104,14 +105,15 @@ function DriverInner() {
       ) : (
         <>
           <div className="flex gap-1 px-4 pt-4">
-            {([["send", "ส่งบิล"], ["owed", "ใบที่ต้องส่งคืน"], ["history", "ประวัติ"]] as const).map(([k, label]) => (
+            {([["checkin", "รถวันนี้"], ["send", "ส่งบิล"], ["owed", "ใบค้างส่ง"], ["history", "ประวัติ"]] as const).map(([k, label]) => (
               <button key={k} onClick={() => setTab(k)}
                 className={`flex-1 py-2 rounded-xl text-xs ${
                   tab === k ? "bg-teal-600 text-white font-medium" : "bg-white border border-slate-200 text-slate-600"
                 }`}>{label}</button>
             ))}
           </div>
-          {tab === "send" ? <SendForm me={me} preVehicle={preVehicle} />
+          {tab === "checkin" ? <CheckIn preVehicle={preVehicle} />
+            : tab === "send" ? <SendForm me={me} preVehicle={preVehicle} />
             : tab === "owed" ? <Outstanding />
             : <History />}
         </>
@@ -300,6 +302,88 @@ function SendForm({ me, preVehicle }: { me: Me; preVehicle: string | null }) {
         {busy ? "กำลังส่ง…" : "ส่งให้ออฟฟิศ"}
       </button>
       <p className="text-xs text-slate-400 text-center">ออฟฟิศจะตรวจสอบก่อนบันทึกเข้าระบบ</p>
+    </div>
+  );
+}
+
+// ---------- เช็คอิน: วันนี้ขับคันไหน ----------
+function CheckIn({ preVehicle }: { preVehicle: string | null }) {
+  const saved = getContact();
+  const [vehicles, setVehicles] = useState<DriverVehicle[]>([]);
+  const [names, setNames] = useState<{ id: string; name: string; department: string | null }[]>([]);
+  const [name, setName] = useState(saved?.name ?? "");
+  const [vehicleId, setVehicleId] = useState(preVehicle ?? "");
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [done, setDone] = useState("");
+
+  useEffect(() => {
+    driverVehicles().then(setVehicles).catch(() => {});
+    staffNames().then(setNames).catch(() => {});
+  }, []);
+
+  const go = async () => {
+    if (!name.trim()) { setErr("เลือกชื่อของคุณ"); return; }
+    if (!vehicleId) { setErr("เลือกรถ"); return; }
+    setBusy(true); setErr("");
+    try {
+      await checkIn(vehicleId, date, name.trim());
+      saveContact({ name: name.trim(), phone: saved?.phone ?? "" });
+      const v = vehicles.find((x) => x.id === vehicleId);
+      setDone(`บันทึกแล้ว: ${name} ขับ ${v?.plate ?? ""} วันที่ ${date}`);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "บันทึกไม่สำเร็จ");
+    } finally { setBusy(false); }
+  };
+
+  const inp = "w-full rounded-xl border border-slate-200 px-4 py-3 text-base";
+  const lbl = "text-xs text-slate-500 mb-1 block";
+
+  return (
+    <div className="p-5 space-y-3">
+      <div className="rounded-2xl bg-teal-50 border border-teal-200 p-4 text-sm text-teal-900">
+        <b>แตะเดียวตอนเริ่มงาน</b> — บอกระบบว่าวันนี้คุณขับรถคันไหน
+        เวลามีบิลน้ำมันหรือใบกำกับหาย ออฟฟิศจะได้รู้ว่าต้องถามใคร
+      </div>
+
+      {done ? (
+        <div className="text-center py-6">
+          <CheckCircle2 className="w-14 h-14 text-emerald-500 mx-auto mb-2" />
+          <p className="font-bold text-slate-800">{done}</p>
+          <button onClick={() => setDone("")}
+            className="mt-5 px-5 py-2.5 rounded-xl border border-slate-200 text-sm">แก้ไข / เช็คอินคันอื่น</button>
+        </div>
+      ) : (
+        <>
+          <div><span className={lbl}>ชื่อของคุณ *</span>
+            <select className={inp} value={name} onChange={(e) => setName(e.target.value)}>
+              <option value="">— เลือกชื่อ —</option>
+              {names.map((n) => (
+                <option key={n.id} value={n.name}>{n.name}{n.department ? ` · ${n.department}` : ""}</option>
+              ))}
+            </select></div>
+          <div><span className={lbl}>รถที่ขับ *</span>
+            <select className={inp} value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
+              <option value="">— เลือกรถ —</option>
+              {vehicles.map((v) => (
+                <option key={v.id} value={v.id}>{v.plate}{v.nickname ? ` (${v.nickname})` : ""}</option>
+              ))}
+            </select>
+            {preVehicle && vehicleId === preVehicle && (
+              <p className="text-xs text-emerald-600 mt-1">เลือกจาก QR ในรถให้แล้ว</p>
+            )}</div>
+          <div><span className={lbl}>วันที่ (ย้อนหลังได้ไม่เกิน 3 วัน)</span>
+            <input type="date" className={inp} value={date} max={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setDate(e.target.value)} /></div>
+          {err && <p className="text-sm text-red-600">{err}</p>}
+          <button onClick={go} disabled={busy}
+            className="w-full py-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-base flex items-center justify-center gap-2 disabled:opacity-50">
+            {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : <CalendarCheck className="w-5 h-5" />}
+            {busy ? "กำลังบันทึก…" : "ยืนยัน วันนี้ผมขับคันนี้"}
+          </button>
+        </>
+      )}
     </div>
   );
 }

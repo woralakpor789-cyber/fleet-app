@@ -297,6 +297,48 @@ export async function upsertStaff(s: Partial<Staff> & { id?: string }): Promise<
   return data as Staff;
 }
 
+// ---------- ตารางเวรรายวัน (คนขับเปลี่ยนทุกวัน) ----------
+export type RosterCell = { vehicle_id: string; work_date: string; driver_name: string; source: string };
+
+export async function loadRoster(period: string): Promise<RosterCell[]> {
+  const { data, error } = await db().rpc("roster_for_month", { p_period: period });
+  if (error) throw error;
+  return (data ?? []) as RosterCell[];
+}
+
+/** ตั้ง/ลบคนขับของช่องวันนั้น (ส่ง null = ลบ) */
+export async function setRosterCell(
+  vehicleId: string, workDate: string, driver: string | null,
+): Promise<void> {
+  if (!driver) {
+    const { error } = await db().from("fleet_daily_assignments").delete()
+      .eq("vehicle_id", vehicleId).eq("work_date", workDate);
+    if (error) throw error;
+    return;
+  }
+  const { error } = await db().from("fleet_daily_assignments")
+    .upsert({ vehicle_id: vehicleId, work_date: workDate, driver_name: driver, source: "ออฟฟิศกรอก" },
+            { onConflict: "vehicle_id,work_date" });
+  if (error) throw error;
+}
+
+/** เติมทั้งเดือนให้รถคันเดียว (ใช้ตอนคนเดิมขับทั้งเดือน) */
+export async function fillRosterMonth(
+  vehicleId: string, period: string, driver: string,
+): Promise<number> {
+  const [y, m] = period.split("-").map(Number);
+  const days = new Date(y, m, 0).getDate();
+  const rows = Array.from({ length: days }, (_, i) => ({
+    vehicle_id: vehicleId,
+    work_date: `${period}-${String(i + 1).padStart(2, "0")}`,
+    driver_name: driver, source: "ออฟฟิศกรอก",
+  }));
+  const { error } = await db().from("fleet_daily_assignments")
+    .upsert(rows, { onConflict: "vehicle_id,work_date" });
+  if (error) throw error;
+  return rows.length;
+}
+
 // ---------- มอบหมายรถให้คนขับตามช่วงเวลา ----------
 export type Assignment = {
   id: string; vehicle_id: string; driver_name: string; driver_phone: string | null;
