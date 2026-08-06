@@ -275,6 +275,51 @@ export async function saveStatement(
   return st;
 }
 
+// ---------- ทะเบียนพนักงาน (คนขับ) ----------
+export type Staff = {
+  id: string; name: string; position: string | null; department: string | null;
+  phone: string | null; email: string | null; active: boolean; note: string | null;
+};
+
+export async function listStaff(): Promise<Staff[]> {
+  const { data, error } = await db().from("fleet_staff").select("*")
+    .order("department").order("name");
+  if (error) throw error;
+  return (data ?? []) as Staff[];
+}
+
+export async function upsertStaff(s: Partial<Staff> & { id?: string }): Promise<Staff> {
+  const q = s.id
+    ? db().from("fleet_staff").update(s).eq("id", s.id).select().single()
+    : db().from("fleet_staff").insert(s).select().single();
+  const { data, error } = await q;
+  if (error) throw error;
+  return data as Staff;
+}
+
+// ---------- มอบหมายรถให้คนขับตามช่วงเวลา ----------
+export type Assignment = {
+  id: string; vehicle_id: string; driver_name: string; driver_phone: string | null;
+  from_date: string; to_date: string | null; note: string | null;
+};
+
+export async function listAssignments(): Promise<Assignment[]> {
+  const { data, error } = await db().from("fleet_vehicle_assignments").select("*")
+    .order("from_date", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Assignment[];
+}
+
+export async function addAssignment(a: Partial<Assignment>): Promise<void> {
+  const { error } = await db().from("fleet_vehicle_assignments").insert(a);
+  if (error) throw error;
+}
+
+export async function deleteAssignment(id: string): Promise<void> {
+  const { error } = await db().from("fleet_vehicle_assignments").delete().eq("id", id);
+  if (error) throw error;
+}
+
 // ---------- รายการรูดบัตรทีละครั้ง + ตามใบกำกับ (เฟส 8B) ----------
 
 export type CardTxn = {

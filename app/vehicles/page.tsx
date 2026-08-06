@@ -7,7 +7,7 @@ import { Car, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import {
   BRANCHES, FINANCE_STATUSES, VEHICLE_STATUSES, VTYPES, bookValue, fmtBaht, fmtDate, type Vehicle,
 } from "@/lib/types";
-import { listVehicles, softDeleteVehicle, upsertVehicle } from "@/lib/fleetApi";
+import { listStaff, listVehicles, softDeleteVehicle, upsertVehicle, type Staff } from "@/lib/fleetApi";
 
 const EMPTY: Partial<Vehicle> = { vtype: "กระบะ", status: "ใช้งาน", depreciation_years: 5, salvage_pct: 10 };
 
@@ -19,10 +19,12 @@ export default function VehiclesPage() {
   const [fType, setFType] = useState("");
   const [fBranch, setFBranch] = useState("");
   const [editing, setEditing] = useState<Partial<Vehicle> | null>(null);
+  const [staff, setStaff] = useState<Staff[]>([]);
 
   const reload = async () => {
     try {
       setRows(await listVehicles());
+      listStaff().then(setStaff).catch(() => {});
       setErr("");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "โหลดข้อมูลไม่สำเร็จ");
@@ -157,6 +159,7 @@ export default function VehiclesPage() {
       {editing && (
         <VehicleModal
           init={editing}
+          staff={staff}
           onClose={() => setEditing(null)}
           onSaved={() => { setEditing(null); reload(); }}
         />
@@ -167,9 +170,10 @@ export default function VehiclesPage() {
 
 // ---------- ฟอร์มเพิ่ม/แก้ไขรถ ----------
 function VehicleModal({
-  init, onClose, onSaved,
+  init, staff, onClose, onSaved,
 }: {
   init: Partial<Vehicle>;
+  staff: Staff[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -238,7 +242,13 @@ function VehicleModal({
               {BRANCHES.map((b) => <option key={b}>{b}</option>)}
             </select></div>
           <div><span className={lbl}>คนขับ/ผู้ใช้ประจำ</span>
-            <input className={inp} value={f.driver_name ?? ""} onChange={(e) => set("driver_name", e.target.value)} /></div>
+            <select className={inp} value={f.driver_name ?? ""}
+              onChange={(e) => set("driver_name", e.target.value || null)}>
+              <option value="">— ยังไม่ระบุ —</option>
+              {staff.map((s) => (
+                <option key={s.id} value={s.name}>{s.name}{s.department ? ` · ${s.department}` : ""}</option>
+              ))}
+            </select></div>
           <div><span className={lbl}>วันที่ซื้อ</span>
             <input type="date" className={inp} value={f.purchase_date ?? ""} onChange={(e) => set("purchase_date", e.target.value || null)} /></div>
           <div><span className={lbl}>ราคาซื้อ (บาท)</span>
