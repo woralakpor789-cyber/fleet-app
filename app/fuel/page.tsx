@@ -5,6 +5,9 @@ import { useEffect, useMemo, useState } from "react";
 import FleetShell from "@/components/FleetShell";
 import { AlertTriangle, Fuel, Pencil, Plus, Trash2, Upload } from "lucide-react";
 import FuelImport from "@/components/FuelImport";
+import BillCapture from "@/components/BillCapture";
+import { Camera } from "lucide-react";
+import { listStaff } from "@/lib/fleetApi";
 import {
   Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
@@ -25,6 +28,8 @@ export default function FuelPage() {
   const [fMonth, setFMonth] = useState("");   // "2026-08"
   const [editing, setEditing] = useState<Partial<FuelLog> | null>(null);
   const [importing, setImporting] = useState(false);
+  const [capturing, setCapturing] = useState(false);
+  const [staffNames, setStaffNames] = useState<string[]>([]);
   const [subs, setSubs] = useState<FuelSubmission[]>([]);
   const [tab, setTab] = useState<"logs" | "review">("logs");
 
@@ -32,6 +37,7 @@ export default function FuelPage() {
     try {
       const [v, l, s] = await Promise.all([listVehicles(), listFuelLogs(), listSubmissions()]);
       setVehicles(v); setLogs(l); setSubs(s); setErr("");
+      listStaff().then((st) => setStaffNames(st.map((x) => x.name))).catch(() => {});
     } catch (e) {
       setErr(e instanceof Error ? e.message : "โหลดข้อมูลไม่สำเร็จ");
     } finally {
@@ -91,14 +97,18 @@ export default function FuelPage() {
         <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
           <Fuel className="w-5 h-5 text-teal-600" /> ต้นทุนน้ำมัน
         </h1>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={() => setCapturing(true)}
+            className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium px-4 py-2 rounded-xl">
+            <Camera className="w-4 h-4" /> ถ่ายรูปบิล
+          </button>
           <button onClick={() => setImporting(true)}
             className="flex items-center gap-1.5 bg-white border border-teal-600 text-teal-700 hover:bg-teal-50 text-sm font-medium px-4 py-2 rounded-xl">
             <Upload className="w-4 h-4" /> นำเข้าบิล
           </button>
           <button onClick={() => setEditing({})}
-            className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium px-4 py-2 rounded-xl">
-            <Plus className="w-4 h-4" /> บันทึกการเติม
+            className="flex items-center gap-1.5 bg-white border border-slate-300 text-slate-600 hover:bg-slate-50 text-sm font-medium px-4 py-2 rounded-xl">
+            <Plus className="w-4 h-4" /> กรอกเอง
           </button>
         </div>
       </div>
@@ -246,6 +256,10 @@ export default function FuelPage() {
       {importing && (
         <FuelImport vehicles={vehicles}
           onClose={() => setImporting(false)} onSaved={reload} />
+      )}
+      {capturing && (
+        <BillCapture vehicles={vehicles} staffNames={staffNames}
+          onClose={() => setCapturing(false)} onSaved={reload} />
       )}
     </FleetShell>
   );

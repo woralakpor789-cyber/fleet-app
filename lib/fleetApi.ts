@@ -502,6 +502,35 @@ export async function rejectSubmission(id: string, reason: string, reviewer: str
   if (error) throw error;
 }
 
+/**
+ * บันทึกบิลน้ำมัน 1 ใบ (จากการถ่ายรูป)
+ * ถ้ามีรายการจากใบแจ้งยอดบัตรที่ตรงกันอยู่แล้ว (รถ+ยอด+วันที่ห่างไม่เกิน 2 วัน และยังไม่มีลิตร)
+ * → เติมข้อมูลใส่รายการเดิม ไม่สร้างใหม่ กันต้นทุนนับซ้ำ
+ */
+export async function saveFuelBill(
+  b: Partial<FuelLog> & { vehicle_id: string; fill_date: string; amount: number },
+  vehicle?: Vehicle,
+): Promise<{ mode: "updated" | "created"; id: string }> {
+  const from = new Date(b.fill_date); from.setDate(from.getDate() - 2);
+  const to = new Date(b.fill_date); to.setDate(to.getDate() + 2);
+  const { data: dup } = await db().from("fleet_fuel_logs").select("id")
+    .eq("vehicle_id", b.vehicle_id).eq("amount", b.amount)
+    .is("deleted_at", null).is("liters", null)
+    .gte("fill_date", from.toISOString().slice(0, 10))
+    .lte("fill_date", to.toISOString().slice(0, 10))
+    .limit(1);
+
+  if (dup && dup.length) {
+    const id = (dup[0] as { id: string }).id;
+    const { error } = await db().from("fleet_fuel_logs")
+      .update({ ...b, source: "บิลถ่ายรูป", historical: false }).eq("id", id);
+    if (error) throw error;
+    return { mode: "updated", id };
+  }
+  const saved = await saveFuelLog({ ...b, source: "บิลถ่ายรูป" }, { vehicle });
+  return { mode: "created", id: saved.id };
+}
+
 export async function softDeleteFuelLog(id: string): Promise<void> {
   const { error } = await db().from("fleet_fuel_logs")
     .update({ deleted_at: new Date().toISOString() }).eq("id", id);

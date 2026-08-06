@@ -171,11 +171,11 @@ function SendForm({ me, preVehicle }: { me: Me; preVehicle: string | null }) {
   };
 
   const send = async () => {
-    if (!vehicleId) { setErr("เลือกรถ"); return; }
-    if (!name.trim()) { setErr("กรอกชื่อผู้ส่ง"); return; }
-    if (!fillDate) { setErr("เลือกวันที่"); return; }
-    if (!(+liters > 0)) { setErr("กรอกจำนวนลิตร"); return; }
+    if (!vehicleId) { setErr("เลือกรถก่อน"); return; }
     if (!(+amount > 0)) { setErr("กรอกยอดเงิน"); return; }
+    if (!(+liters > 0)) { setErr("กรอกจำนวนลิตร"); return; }
+    if (!name.trim()) { setErr("ยังไม่มีชื่อผู้ส่ง — เปิด \"ระบุเพิ่มเติม\" แล้วกรอกชื่อ"); return; }
+    if (!fillDate) { setErr("เลือกวันที่"); return; }
     setBusy(true); setErr("");
     try {
       saveContact({ name: name.trim(), phone: phone.trim() });
@@ -230,58 +230,67 @@ function SendForm({ me, preVehicle }: { me: Me; preVehicle: string | null }) {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div><span className={lbl}>ชื่อผู้ส่ง *</span>
-          <input className={inp} value={name} onChange={(e) => setName(e.target.value)} /></div>
-        <div><span className={lbl}>เบอร์โทร</span>
-          <input className={inp} inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
-      </div>
-
-      <div>
-        <span className={lbl}>รูปบิล</span>
-        <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-2xl py-7 cursor-pointer active:bg-slate-50">
-          {preview ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={preview} alt="บิล" className="max-h-44 rounded-lg" />
-          ) : (
-            <>
-              <Camera className="w-8 h-8 text-slate-400" />
-              <span className="text-sm text-slate-600 font-medium">ถ่ายรูปบิล</span>
-              <span className="text-xs text-slate-400">หรือเลือกรูปจากเครื่อง</span>
-            </>
-          )}
-          <input type="file" accept="image/*" capture="environment" className="hidden"
-            onChange={(e) => pickFile(e.target.files?.[0] ?? null)} />
-        </label>
-        {ocrMsg && (
-          <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-            {ocrMsg.startsWith("กำลัง") && <Loader2 className="w-3 h-3 animate-spin" />}{ocrMsg}
-          </p>
+      {/* 1) ถ่ายรูปบิล — ปุ่มใหญ่ที่สุด ทำอย่างแรก */}
+      <label className={`flex flex-col items-center justify-center gap-2 rounded-2xl cursor-pointer ${
+        preview ? "border-2 border-slate-200 p-2" : "bg-teal-600 text-white py-9 active:bg-teal-700"
+      }`}>
+        {preview ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={preview} alt="บิล" className="max-h-48 rounded-lg" />
+            <span className="text-xs text-teal-700 font-medium py-1">แตะเพื่อถ่ายใหม่</span>
+          </>
+        ) : (
+          <>
+            <Camera className="w-10 h-10" />
+            <span className="font-bold text-lg">ถ่ายรูปบิล</span>
+            <span className="text-xs text-teal-100">ถ่ายให้เห็นยอดเงินและจำนวนลิตรชัดๆ</span>
+          </>
         )}
+        <input type="file" accept="image/*" capture="environment" className="hidden"
+          onChange={(e) => pickFile(e.target.files?.[0] ?? null)} />
+      </label>
+      {ocrMsg && (
+        <p className="text-xs text-slate-500 flex items-center gap-1">
+          {ocrMsg.startsWith("กำลัง") && <Loader2 className="w-3 h-3 animate-spin" />}{ocrMsg}
+        </p>
+      )}
+
+      {/* 2) กรอกแค่ 3 ช่อง */}
+      <div className="grid grid-cols-2 gap-3">
+        <div><span className={lbl}>ยอดเงิน (บาท) *</span>
+          <input type="number" inputMode="decimal" step="0.01" className={inp + " text-lg font-semibold"}
+            value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
+        <div><span className={lbl}>จำนวนลิตร *</span>
+          <input type="number" inputMode="decimal" step="0.01" className={inp + " text-lg font-semibold"}
+            value={liters} onChange={(e) => setLiters(e.target.value)} /></div>
+        <div className="col-span-2"><span className={lbl}>เลขไมล์บนหน้าปัด (กม.) — ช่วยให้คำนวณอัตราสิ้นเปลืองได้</span>
+          <input type="number" inputMode="numeric" className={inp + " text-lg font-semibold"} value={odometer}
+            onChange={(e) => setOdometer(e.target.value)} placeholder="เช่น 125400" /></div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div><span className={lbl}>วันที่เติม *</span>
-          <input type="date" className={inp} value={fillDate} onChange={(e) => setFillDate(e.target.value)} /></div>
-        <div><span className={lbl}>เลขไมล์ (กม.)</span>
-          <input type="number" inputMode="numeric" className={inp} value={odometer}
-            onChange={(e) => setOdometer(e.target.value)} placeholder="ดูจากหน้าปัด" /></div>
-        <div><span className={lbl}>จำนวนลิตร *</span>
-          <input type="number" inputMode="decimal" step="0.01" className={inp} value={liters}
-            onChange={(e) => setLiters(e.target.value)} /></div>
-        <div><span className={lbl}>ยอดเงิน (บาท) *</span>
-          <input type="number" inputMode="decimal" step="0.01" className={inp} value={amount}
-            onChange={(e) => setAmount(e.target.value)} /></div>
-        <div><span className={lbl}>ชนิดน้ำมัน</span>
-          <select className={inp} value={fuelType} onChange={(e) => setFuelType(e.target.value)}>
-            {FUEL_TYPES.map((t) => <option key={t}>{t}</option>)}
-          </select></div>
-        <div><span className={lbl}>ปั๊ม</span>
-          <input className={inp} value={station} onChange={(e) => setStation(e.target.value)} placeholder="เช่น ปตท." /></div>
-        <div className="col-span-2"><span className={lbl}>เลขที่ใบกำกับภาษี (ถ้ามี)</span>
-          <input className={inp} value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)}
-            placeholder="ดูที่มุมบนของใบกำกับ" /></div>
-      </div>
+      {/* 3) ที่เหลือซ่อนไว้ — ปกติไม่ต้องแตะ */}
+      <details className="rounded-xl border border-slate-200">
+        <summary className="px-4 py-3 text-sm text-slate-600 cursor-pointer select-none">
+          ระบุเพิ่มเติม (ปกติไม่ต้องแก้)
+        </summary>
+        <div className="grid grid-cols-2 gap-3 p-4 pt-0">
+          <div><span className={lbl}>วันที่เติม</span>
+            <input type="date" className={inp} value={fillDate} onChange={(e) => setFillDate(e.target.value)} /></div>
+          <div><span className={lbl}>ชนิดน้ำมัน</span>
+            <select className={inp} value={fuelType} onChange={(e) => setFuelType(e.target.value)}>
+              {FUEL_TYPES.map((t) => <option key={t}>{t}</option>)}
+            </select></div>
+          <div><span className={lbl}>ปั๊ม</span>
+            <input className={inp} value={station} onChange={(e) => setStation(e.target.value)} placeholder="เช่น ปตท." /></div>
+          <div><span className={lbl}>เลขที่ใบกำกับ</span>
+            <input className={inp} value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} /></div>
+          <div><span className={lbl}>ชื่อผู้ส่ง</span>
+            <input className={inp} value={name} onChange={(e) => setName(e.target.value)} /></div>
+          <div><span className={lbl}>เบอร์โทร</span>
+            <input className={inp} inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
+        </div>
+      </details>
 
       {/* เตือนเรื่องใบตัวจริง — หัวใจของระบบนี้ */}
       <div className="rounded-2xl bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 flex gap-2">
