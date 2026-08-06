@@ -17,6 +17,7 @@ const BADGE: Record<string, string> = {
   "ส่งบัญชีแล้ว": "bg-emerald-50 text-emerald-700 border-emerald-200",
   "หาย": "bg-red-100 text-red-800 border-red-300",
   "ไม่มีใบกำกับ": "bg-slate-100 text-slate-500 border-slate-200",
+  "ยกยอด (ก่อนใช้ระบบ)": "bg-slate-100 text-slate-400 border-slate-200",
 };
 
 export default function ChaseList({ period }: { period: string }) {
@@ -29,6 +30,7 @@ export default function ChaseList({ period }: { period: string }) {
   const [fStatus, setFStatus] = useState("ยังไม่ได้ใบ");
   const [fDriver, setFDriver] = useState("");
   const [sel, setSel] = useState<Set<string>>(new Set());
+  const [showHist, setShowHist] = useState(false);
 
   const reload = async () => {
     try {
@@ -47,18 +49,22 @@ export default function ChaseList({ period }: { period: string }) {
     [rows]
   );
 
-  const filtered = useMemo(() => rows.filter((r) => {
+  // ข้อมูลก่อนเริ่มใช้ระบบ = ยกยอดแล้ว ไม่นับ ไม่แสดง
+  const live = useMemo(() => rows.filter((r) => !r.historical), [rows]);
+  const nHist = rows.length - live.length;
+
+  const filtered = useMemo(() => (showHist ? rows : live).filter((r) => {
     if (fStatus && r.invoice_status !== fStatus) return false;
     if (fDriver && (r.driver ?? "") !== fDriver) return false;
     const s = q.trim().toLowerCase();
     if (!s) return true;
     return [r.plate, r.station, r.province, r.driver].some((x) => x?.toLowerCase().includes(s));
-  }), [rows, fStatus, fDriver, q]);
+  }), [rows, live, showHist, fStatus, fDriver, q]);
 
   // สรุปคนที่ต้องตาม
   const chaseBy = useMemo(() => {
     const m = new Map<string, { n: number; amount: number; vat: number }>();
-    for (const r of rows) {
+    for (const r of live) {
       if (r.invoice_status !== "ยังไม่ได้ใบ") continue;
       const k = r.driver || "(ยังไม่ระบุคนขับ)";
       const cur = m.get(k) ?? { n: 0, amount: 0, vat: 0 };
@@ -66,9 +72,9 @@ export default function ChaseList({ period }: { period: string }) {
       m.set(k, cur);
     }
     return [...m.entries()].sort((a, b) => b[1].n - a[1].n);
-  }, [rows]);
+  }, [live]);
 
-  const missing = rows.filter((r) => r.invoice_status === "ยังไม่ได้ใบ");
+  const missing = live.filter((r) => r.invoice_status === "ยังไม่ได้ใบ");
   const missingVat = missing.reduce((s, r) => s + vatFromGross(r.amount), 0);
 
   const autoMatch = async () => {
@@ -99,7 +105,8 @@ export default function ChaseList({ period }: { period: string }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <div className="rounded-2xl border border-slate-200 bg-white p-3">
           <div className="text-xs text-slate-500">รูดบัตรทั้งเดือน</div>
-          <div className="text-2xl font-bold text-slate-800 mt-1">{loading ? "…" : rows.length}</div>
+          <div className="text-2xl font-bold text-slate-800 mt-1">{loading ? "…" : live.length}</div>
+          {nHist > 0 && <div className="text-[10px] text-slate-400">ยกยอดไม่นับอีก {nHist}</div>}
         </div>
         <div className="rounded-2xl border border-red-200 bg-red-50 p-3">
           <div className="text-xs text-red-700">ยังไม่ได้ใบกำกับ</div>
@@ -112,7 +119,7 @@ export default function ChaseList({ period }: { period: string }) {
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
           <div className="text-xs text-emerald-700">ได้ใบแล้ว</div>
           <div className="text-2xl font-bold text-emerald-700 mt-1">
-            {loading ? "…" : rows.length - missing.length}
+            {loading ? "…" : live.length - missing.length}
           </div>
         </div>
       </div>
@@ -163,6 +170,13 @@ export default function ChaseList({ period }: { period: string }) {
           <option value="">ทุกคน</option>
           {drivers.map((d) => <option key={d}>{d}</option>)}
         </select>
+        {nHist > 0 && (
+          <label className="flex items-center gap-2 text-sm text-slate-500 cursor-pointer">
+            <input type="checkbox" checked={showHist} onChange={(e) => setShowHist(e.target.checked)}
+              className="w-4 h-4 accent-slate-500" />
+            ดูข้อมูลยกยอด ({nHist})
+          </label>
+        )}
         <button onClick={autoMatch} disabled={busy}
           className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-xl border border-teal-600 text-teal-700 hover:bg-teal-50 disabled:opacity-50">
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />} จับคู่ใบที่มีในระบบ

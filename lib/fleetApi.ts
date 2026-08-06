@@ -377,6 +377,7 @@ export type CardTxn = {
   chase_note: string | null;
   matched_log_id: string | null;
   matched_invoice_no: string | null;
+  historical: boolean;   // ยกยอดก่อนใช้ระบบ — ไม่ต้องตาม
 };
 
 export const TXN_INVOICE_STATUSES = ["ยังไม่ได้ใบ", "ได้ใบแล้ว", "ส่งบัญชีแล้ว", "หาย", "ไม่มีใบกำกับ"];

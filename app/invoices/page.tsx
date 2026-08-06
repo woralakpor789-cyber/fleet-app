@@ -22,6 +22,7 @@ const STATUS_STYLE: Record<string, string> = {
   "ส่งบัญชีแล้ว": "bg-emerald-50 text-emerald-700 border-emerald-200",
   "หาย": "bg-red-100 text-red-700 border-red-200",
   "ไม่มีใบกำกับ": "bg-slate-100 text-slate-500 border-slate-200",
+  "ยกยอด (ก่อนใช้ระบบ)": "bg-slate-100 text-slate-400 border-slate-200",
 };
 const OUTSTANDING = ["รอคนขับส่ง", "คนขับถือไว้"];
 
@@ -35,6 +36,7 @@ export default function InvoicesPage() {
   const [fHolder, setFHolder] = useState("");
   const [fMonth, setFMonth] = useState("");
   const [sel, setSel] = useState<Set<string>>(new Set());
+  const [showHist, setShowHist] = useState(false);
   const [busy, setBusy] = useState(false);
   const receiver = getStoredUser()?.name ?? "บัญชี";
 
@@ -60,7 +62,10 @@ export default function InvoicesPage() {
     [logs]
   );
 
-  const rows = useMemo(() => logs.filter((l) => {
+  // ข้อมูลก่อนเริ่มใช้ระบบ = ยกยอดไปแล้ว ไม่นับ ไม่แสดง (เว้นแต่ติ๊กดู)
+  const live = useMemo(() => logs.filter((l) => !l.historical), [logs]);
+
+  const rows = useMemo(() => (showHist ? logs : live).filter((l) => {
     if (fStatus === "ค้างอยู่" ? !OUTSTANDING.includes(l.invoice_status) : fStatus && l.invoice_status !== fStatus) return false;
     if (fHolder && (l.invoice_holder ?? "") !== fHolder) return false;
     if (fMonth && !l.fill_date.startsWith(fMonth)) return false;
@@ -68,21 +73,21 @@ export default function InvoicesPage() {
     if (!s) return true;
     return [plateOf(l.vehicle_id), l.tax_invoice_no, l.invoice_holder, l.station]
       .some((x) => x?.toLowerCase().includes(s));
-  }), [logs, fStatus, fHolder, fMonth, q, plateOf]);
+  }), [logs, live, showHist, fStatus, fHolder, fMonth, q, plateOf]);
 
   // สรุปภาพรวม
   const stat = useMemo(() => {
-    const out = logs.filter((l) => OUTSTANDING.includes(l.invoice_status));
-    const lost = logs.filter((l) => l.invoice_status === "หาย");
+    const out = live.filter((l) => OUTSTANDING.includes(l.invoice_status));
+    const lost = live.filter((l) => l.invoice_status === "หาย");
     const vatOut = out.reduce((s, l) => s + (l.vat_amount ?? vatFromGross(l.amount)), 0);
     const vatLost = lost.reduce((s, l) => s + (l.vat_amount ?? vatFromGross(l.amount)), 0);
     return { nOut: out.length, vatOut, nLost: lost.length, vatLost };
-  }, [logs]);
+  }, [live]);
 
   // ค้างแยกตามคนขับ — ใช้ตามทวง
   const byHolder = useMemo(() => {
     const m = new Map<string, { n: number; vat: number; oldest: string }>();
-    for (const l of logs) {
+    for (const l of live) {
       if (!OUTSTANDING.includes(l.invoice_status)) continue;
       const k = l.invoice_holder || "(ไม่ระบุคนถือ)";
       const cur = m.get(k) ?? { n: 0, vat: 0, oldest: l.fill_date };
@@ -92,7 +97,7 @@ export default function InvoicesPage() {
       m.set(k, cur);
     }
     return [...m.entries()].sort((a, b) => b[1].n - a[1].n);
-  }, [logs]);
+  }, [live]);
 
   const toggle = (id: string) =>
     setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -189,6 +194,13 @@ export default function InvoicesPage() {
         </select>
         <input type="month" value={fMonth} onChange={(e) => setFMonth(e.target.value)}
           className="rounded-xl border border-slate-200 bg-white text-sm px-3 py-2" />
+        {logs.length - live.length > 0 && (
+          <label className="flex items-center gap-2 text-sm text-slate-500 px-2 cursor-pointer">
+            <input type="checkbox" checked={showHist} onChange={(e) => setShowHist(e.target.checked)}
+              className="w-4 h-4 accent-slate-500" />
+            ดูข้อมูลยกยอดก่อนใช้ระบบ ({logs.length - live.length})
+          </label>
+        )}
       </div>
 
       {/* แถบทำงานกับที่เลือกไว้ */}

@@ -235,6 +235,7 @@ export type FuelLog = {
   invoice_returned_at: string | null;
   invoice_returned_to: string | null;
   invoice_note: string | null;
+  historical: boolean;           // true = ข้อมูลก่อนเริ่มใช้ระบบ (ยกยอด — ไม่นับในยอดค้าง)
   created_at: string;
   deleted_at: string | null;
 };
@@ -285,6 +286,7 @@ export const INVOICE_STATUSES = [
   "ส่งบัญชีแล้ว",    // บัญชีรับตัวจริงแล้ว — เคลมภาษีซื้อได้
   "หาย",             // ทำหาย ต้องขอใบแทนหรือตัดออก
   "ไม่มีใบกำกับ",    // ปั๊มไม่ออกให้ / ไม่ได้ขอ
+  "ยกยอด (ก่อนใช้ระบบ)", // ข้อมูลย้อนหลัง — เก็บไว้ดูได้แต่ไม่ต้องตาม
 ];
 
 /** VAT 7% ที่รวมอยู่ในราคาน้ำมันแล้ว (ราคาน้ำมันไทยเป็นราคารวม VAT) */
