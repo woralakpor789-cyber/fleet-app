@@ -6,6 +6,8 @@ import { useEffect, useMemo, useState } from "react";
 import FleetShell from "@/components/FleetShell";
 import { AlertTriangle, CheckCircle2, CreditCard, Save, Scale, Trash2 } from "lucide-react";
 import ChaseList from "@/components/ChaseList";
+import StatementScanModal from "@/components/StatementScan";
+import { FileSearch } from "lucide-react";
 import {
   fmtBaht, fmtDate,
   type CardStatement, type FuelCard, type FuelLog, type StatementLine, type Vehicle,
@@ -35,6 +37,7 @@ export default function CardsPage() {
   const [stmtDate, setStmtDate] = useState("");
   const [stmtTotal, setStmtTotal] = useState("");
   const [saving, setSaving] = useState(false);
+  const [scanning, setScanning] = useState(false);
 
   const reload = async () => {
     try {
@@ -157,6 +160,28 @@ export default function CardsPage() {
 
       {tab === "chase" && <ChaseList period={period} />}
 
+      {scanning && (
+        <StatementScanModal
+          cards={cards}
+          onClose={() => setScanning(false)}
+          onApply={(r) => {
+            // เติมยอดที่อ่านได้ลงในช่องกรอก (ยังไม่บันทึก — ให้ตรวจก่อน)
+            const byAcct = new Map(cards.map((c) => [c.account_name ?? "", c.id]));
+            setAmt((a) => {
+              const n = { ...a };
+              for (const l of r.lines) {
+                const id = byAcct.get(l.account);
+                if (id) n[id] = String(l.amount);
+              }
+              return n;
+            });
+            if (r.statementDate) setStmtDate(r.statementDate);
+            if (r.total != null) setStmtTotal(String(r.total));
+            setMsg(`เติมยอดจากไฟล์ ${r.lines.length} บัตรแล้ว — ตรวจตัวเลขแล้วกด "บันทึกรอบนี้"`);
+          }}
+        />
+      )}
+
       {!loading && tab === "reconcile" && (
         <>
           {/* คีย์ยอดจากใบแจ้งยอด */}
@@ -190,6 +215,10 @@ export default function CardsPage() {
                     : <span className="ml-1">ต่าง {fmtBaht(Math.abs(diff))}</span>)}
                 </div>
               </div>
+              <button onClick={() => setScanning(true)}
+                className="self-end flex items-center gap-1.5 border border-teal-600 text-teal-700 hover:bg-teal-50 text-sm font-medium px-4 py-2 rounded-xl">
+                <FileSearch className="w-4 h-4" /> อ่านจากไฟล์
+              </button>
               <button onClick={save} disabled={saving}
                 className="self-end flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium px-4 py-2 rounded-xl disabled:opacity-50">
                 <Save className="w-4 h-4" /> {saving ? "กำลังบันทึก…" : "บันทึกรอบนี้"}
