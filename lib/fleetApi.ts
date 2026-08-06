@@ -219,6 +219,33 @@ export async function saveFuelLog(
   return saved;
 }
 
+// ---------- ใบกำกับภาษี (เฟส 7) ----------
+
+/** อัปเดตสถานะใบกำกับของหลายรายการพร้อมกัน (เช่น รับคืนจากคนขับทีเดียวหลายใบ) */
+export async function updateInvoiceStatus(
+  ids: string[],
+  patch: {
+    invoice_status?: string;
+    invoice_holder?: string | null;
+    invoice_returned_at?: string | null;
+    invoice_returned_to?: string | null;
+    invoice_note?: string | null;
+  },
+): Promise<void> {
+  if (!ids.length) return;
+  const { error } = await db().from("fleet_fuel_logs").update(patch).in("id", ids);
+  if (error) throw error;
+}
+
+/** บันทึกว่าบัญชีรับใบตัวจริงคืนแล้ว */
+export async function markInvoicesReturned(ids: string[], receiver: string): Promise<void> {
+  await updateInvoiceStatus(ids, {
+    invoice_status: "ส่งบัญชีแล้ว",
+    invoice_returned_at: new Date().toISOString().slice(0, 10),
+    invoice_returned_to: receiver,
+  });
+}
+
 // ---------- บิลที่คนขับส่งเข้ามา (รอตรวจ) ----------
 export async function listSubmissions(): Promise<FuelSubmission[]> {
   const { data, error } = await db()
@@ -241,6 +268,11 @@ export async function approveSubmission(
     liters: m.liters, amount: m.amount, fuel_type: m.fuel_type, station: m.station,
     full_tank: true, file_path: m.file_path,
     note: `คนขับส่ง: ${m.driver_name}${m.driver_phone ? ` (${m.driver_phone})` : ""}`,
+    // ใบกำกับตัวจริงยังอยู่กับคนขับ — ถ่ายรูปมาแล้วแต่ยังไม่ส่งบัญชี
+    tax_invoice_no: m.tax_invoice_no ?? null,
+    vat_amount: m.amount ? Math.round((m.amount * 7 / 107) * 100) / 100 : null,
+    invoice_status: "คนขับถือไว้",
+    invoice_holder: m.driver_name,
   }, { vehicle });
   const { error } = await db().from("fleet_fuel_submissions").update({
     ...patch, status: "อนุมัติ", fuel_log_id: log.id,

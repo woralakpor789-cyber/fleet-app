@@ -206,11 +206,31 @@ export type FuelLog = {
   full_tank: boolean;
   note: string | null;
   file_path: string | null;      // รูปบิลใน Storage
+  // ---- ติดตามใบกำกับภาษี (เฟส 7) ----
+  tax_invoice_no: string | null;
+  vat_amount: number | null;
+  invoice_status: string;        // รอคนขับส่ง/คนขับถือไว้/ส่งบัญชีแล้ว/หาย/ไม่มีใบกำกับ
+  invoice_holder: string | null; // คนขับที่ถือใบตัวจริง
+  invoice_returned_at: string | null;
+  invoice_returned_to: string | null;
+  invoice_note: string | null;
   created_at: string;
   deleted_at: string | null;
 };
 
 export const FUEL_TYPES = ["ดีเซล", "เบนซิน", "แก๊สโซฮอล์", "LPG", "อื่นๆ"];
+
+/** สถานะใบกำกับภาษี — เรียงตามลำดับที่เกิดจริง */
+export const INVOICE_STATUSES = [
+  "รอคนขับส่ง",      // รู้ว่ามีการเติม แต่ยังไม่เห็นใบเลย
+  "คนขับถือไว้",     // คนขับถ่ายรูปส่งมาแล้ว ตัวจริงยังอยู่กับเขา
+  "ส่งบัญชีแล้ว",    // บัญชีรับตัวจริงแล้ว — เคลมภาษีซื้อได้
+  "หาย",             // ทำหาย ต้องขอใบแทนหรือตัดออก
+  "ไม่มีใบกำกับ",    // ปั๊มไม่ออกให้ / ไม่ได้ขอ
+];
+
+/** VAT 7% ที่รวมอยู่ในราคาน้ำมันแล้ว (ราคาน้ำมันไทยเป็นราคารวม VAT) */
+export const vatFromGross = (gross: number) => Math.round((gross * 7 / 107) * 100) / 100;
 
 /** บิลที่คนขับส่งเข้ามา รอ backoffice ตรวจ (เฟส 6F) */
 export type FuelSubmission = {
@@ -226,6 +246,7 @@ export type FuelSubmission = {
   station: string | null;
   file_path: string | null;
   note: string | null;
+  tax_invoice_no: string | null;  // เลขที่ใบกำกับภาษี (คนขับกรอกได้)
   status: string;                 // รอตรวจ/อนุมัติ/ปฏิเสธ
   reject_reason: string | null;
   fuel_log_id: string | null;

@@ -65,7 +65,20 @@ export type FuelSubmitInput = {
   fuel_type: string | null;
   station: string | null;
   file_path: string | null;
+  tax_invoice_no: string | null;
 };
+
+/** ใบกำกับตัวจริงที่คนขับคนนี้ยังค้างส่งคืนบัญชี */
+export type OutstandingInvoice = {
+  id: string; plate: string; fill_date: string; amount: number;
+  tax_invoice_no: string | null; invoice_status: string;
+};
+
+export async function myOutstandingInvoices(): Promise<OutstandingInvoice[]> {
+  const { data, error } = await db().rpc("driver_outstanding_invoices");
+  if (error) return [];
+  return (data ?? []) as OutstandingInvoice[];
+}
 
 /** ส่งบิลเข้าคิวรอตรวจ (RLS บังคับสถานะ "รอตรวจ" และอีเมลต้องเป็นของตัวเอง) */
 export async function submitFuel(i: FuelSubmitInput): Promise<void> {

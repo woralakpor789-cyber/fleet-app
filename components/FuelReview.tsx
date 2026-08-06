@@ -123,6 +123,9 @@ export default function FuelReview({
               <div><span className="text-[10px] text-slate-500 block mb-0.5">ปั๊ม</span>
                 <input className={inp} value={val(r, "station") ?? ""}
                   onChange={(e) => setVal(r.id, { station: e.target.value || null })} /></div>
+              <div><span className="text-[10px] text-slate-500 block mb-0.5">เลขที่ใบกำกับ</span>
+                <input className={inp} value={val(r, "tax_invoice_no") ?? ""}
+                  onChange={(e) => setVal(r.id, { tax_invoice_no: e.target.value || null })} /></div>
               <div className="flex items-end">
                 <span className={`text-xs ${odd ? "text-red-600" : "text-slate-500"}`}>
                   {perL > 0 ? `${perL.toFixed(2)} ฿/ลิตร` : "—"}

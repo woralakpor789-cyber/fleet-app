@@ -7,7 +7,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
-  Camera, CheckCircle2, ClipboardList, Fuel, Loader2, LogOut, Send, ShieldAlert, Truck,
+  Camera, CheckCircle2, ClipboardList, Fuel, Loader2, LogOut, Receipt, Send, ShieldAlert, Truck,
 } from "lucide-react";
 import GoogleLoginButton, { type GoogleUser } from "@/components/GoogleLoginButton";
 import { FUEL_TYPES } from "@/lib/types";
@@ -15,8 +15,9 @@ import { signOut } from "@/lib/auth";
 import { ocrImage } from "@/lib/docImport/imageOcr";
 import { parseFuelAmounts } from "@/lib/docImport/fuelParse";
 import {
-  amIDriver, driverVehicles, getContact, myEmail, mySubmissions, saveContact,
-  submitFuel, uploadReceipt, type DriverVehicle, type MySubmission,
+  amIDriver, driverVehicles, getContact, myEmail, myOutstandingInvoices, mySubmissions,
+  saveContact, submitFuel, uploadReceipt,
+  type DriverVehicle, type MySubmission, type OutstandingInvoice,
 } from "@/lib/driverApi";
 
 export default function DriverPage() {
@@ -36,7 +37,7 @@ function DriverInner() {
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [checking, setChecking] = useState(true);
   const [loginErr, setLoginErr] = useState("");
-  const [tab, setTab] = useState<"send" | "history">("send");
+  const [tab, setTab] = useState<"send" | "owed" | "history">("send");
 
   const verify = useCallback(async (fallbackName?: string) => {
     const email = await myEmail();
@@ -103,14 +104,16 @@ function DriverInner() {
       ) : (
         <>
           <div className="flex gap-1 px-4 pt-4">
-            {([["send", "ส่งบิล"], ["history", "ประวัติที่ส่ง"]] as const).map(([k, label]) => (
+            {([["send", "ส่งบิล"], ["owed", "ใบที่ต้องส่งคืน"], ["history", "ประวัติ"]] as const).map(([k, label]) => (
               <button key={k} onClick={() => setTab(k)}
-                className={`flex-1 py-2 rounded-xl text-sm ${
+                className={`flex-1 py-2 rounded-xl text-xs ${
                   tab === k ? "bg-teal-600 text-white font-medium" : "bg-white border border-slate-200 text-slate-600"
                 }`}>{label}</button>
             ))}
           </div>
-          {tab === "send" ? <SendForm me={me} preVehicle={preVehicle} /> : <History />}
+          {tab === "send" ? <SendForm me={me} preVehicle={preVehicle} />
+            : tab === "owed" ? <Outstanding />
+            : <History />}
         </>
       )}
     </main>
@@ -133,6 +136,7 @@ function SendForm({ me, preVehicle }: { me: Me; preVehicle: string | null }) {
   const [amount, setAmount] = useState("");
   const [fuelType, setFuelType] = useState("ดีเซล");
   const [station, setStation] = useState("");
+  const [invoiceNo, setInvoiceNo] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [done, setDone] = useState(false);
@@ -177,6 +181,7 @@ function SendForm({ me, preVehicle }: { me: Me; preVehicle: string | null }) {
         driver_email: me.email, fill_date: fillDate,
         odometer: odometer ? +odometer : null, liters: +liters, amount: +amount,
         fuel_type: fuelType || null, station: station || null, file_path: path,
+        tax_invoice_no: invoiceNo.trim() || null,
       });
       setDone(true);
     } catch (e) {
@@ -269,6 +274,16 @@ function SendForm({ me, preVehicle }: { me: Me; preVehicle: string | null }) {
           </select></div>
         <div><span className={lbl}>ปั๊ม</span>
           <input className={inp} value={station} onChange={(e) => setStation(e.target.value)} placeholder="เช่น ปตท." /></div>
+        <div className="col-span-2"><span className={lbl}>เลขที่ใบกำกับภาษี (ถ้ามี)</span>
+          <input className={inp} value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)}
+            placeholder="ดูที่มุมบนของใบกำกับ" /></div>
+      </div>
+
+      {/* เตือนเรื่องใบตัวจริง — หัวใจของระบบนี้ */}
+      <div className="rounded-2xl bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 flex gap-2">
+        <Receipt className="w-5 h-5 shrink-0 mt-0.5" />
+        <span><b>อย่าทิ้งใบกำกับภาษีตัวจริง</b> — ถ่ายรูปแล้วเก็บใบไว้ส่งคืนฝ่ายบัญชีด้วย
+        ดูว่าตัวเองค้างส่งกี่ใบได้ที่แท็บ &quot;ใบที่ต้องส่งคืน&quot;</span>
       </div>
 
       {perLiter && (
@@ -285,6 +300,47 @@ function SendForm({ me, preVehicle }: { me: Me; preVehicle: string | null }) {
         {busy ? "กำลังส่ง…" : "ส่งให้ออฟฟิศ"}
       </button>
       <p className="text-xs text-slate-400 text-center">ออฟฟิศจะตรวจสอบก่อนบันทึกเข้าระบบ</p>
+    </div>
+  );
+}
+
+// ---------- ใบกำกับตัวจริงที่ยังค้างส่งคืนบัญชี ----------
+function Outstanding() {
+  const [rows, setRows] = useState<OutstandingInvoice[] | null>(null);
+  useEffect(() => { myOutstandingInvoices().then(setRows); }, []);
+
+  if (!rows) return <p className="p-6 text-center text-slate-400">กำลังโหลด…</p>;
+  if (!rows.length) return (
+    <div className="p-8 text-center">
+      <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-2" />
+      <p className="font-medium text-slate-700">ไม่มีใบค้างส่ง</p>
+      <p className="text-sm text-slate-400 mt-1">ส่งคืนบัญชีครบแล้ว ขอบคุณครับ</p>
+    </div>
+  );
+
+  const total = rows.reduce((s, r) => s + r.amount, 0);
+  return (
+    <div className="p-4 space-y-2">
+      <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-amber-900">
+        <div className="font-bold text-lg">ค้างส่งคืน {rows.length} ใบ</div>
+        <div className="text-sm">รวม {total.toLocaleString()} บาท · กรุณารวบรวมใบตัวจริงส่งฝ่ายบัญชี</div>
+      </div>
+      {rows.map((r) => (
+        <div key={r.id} className="bg-white border border-slate-200 rounded-2xl p-4">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <div className="font-semibold text-slate-800">{r.plate}</div>
+              <div className="text-xs text-slate-500 mt-0.5">
+                {r.fill_date} · {r.amount.toLocaleString()} ฿
+                {r.tax_invoice_no ? ` · เลขที่ ${r.tax_invoice_no}` : ""}
+              </div>
+            </div>
+            <span className="px-2 py-0.5 rounded-full text-xs bg-amber-50 text-amber-700 shrink-0">
+              {r.invoice_status}
+            </span>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
