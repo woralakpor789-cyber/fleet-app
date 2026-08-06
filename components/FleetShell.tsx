@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Car, FileText, Wrench, Fuel, Receipt, BarChart3, LayoutDashboard, LogOut, Truck, UserCheck,
+  Car, FileText, Wrench, Fuel, Receipt, CreditCard, BarChart3, LayoutDashboard,
+  LogOut, Truck, UserCheck,
 } from "lucide-react";
 import { checkFleetAccess, getStoredUser, signOut, type FleetUser } from "@/lib/auth";
 
@@ -16,6 +17,7 @@ const MENU = [
   { href: "/maintenance", label: "ซ่อมบำรุง",        icon: Wrench },
   { href: "/fuel",        label: "น้ำมัน",           icon: Fuel },
   { href: "/invoices",    label: "ใบกำกับภาษี",      icon: Receipt },
+  { href: "/cards",       label: "ฟลีทการ์ด",        icon: CreditCard },
   { href: "/reports",     label: "รายงาน",           icon: BarChart3 },
   { href: "/drivers",     label: "คนขับ/QR",         icon: UserCheck },
 ];

@@ -1,7 +1,8 @@
 // ตัวเชื่อม Supabase สำหรับตาราง fleet_* — ทุกฟังก์ชัน throw ถ้าไม่มี Supabase env
 import { supabase } from "./supabaseClient";
 import type {
-  Claim, FuelLog, FuelSubmission, MaintLog, MaintPlan, Tire, Vehicle, VehicleDoc,
+  CardStatement, Claim, FuelCard, FuelLog, FuelSubmission, MaintLog, MaintPlan,
+  StatementLine, Tire, Vehicle, VehicleDoc,
 } from "./types";
 
 function db() {
@@ -217,6 +218,61 @@ export async function saveFuelLog(
     await db().from("fleet_vehicles").update({ odometer: saved.odometer }).eq("id", v.id);
   }
   return saved;
+}
+
+// ---------- ฟลีทการ์ด + ใบแจ้งยอดรายเดือน (เฟส 8) ----------
+
+export async function listCards(): Promise<FuelCard[]> {
+  const { data, error } = await db().from("fleet_fuel_cards").select("*").order("account_name");
+  if (error) throw error;
+  return (data ?? []) as FuelCard[];
+}
+
+export async function upsertCard(c: Partial<FuelCard> & { id?: string }): Promise<FuelCard> {
+  const q = c.id
+    ? db().from("fleet_fuel_cards").update(c).eq("id", c.id).select().single()
+    : db().from("fleet_fuel_cards").insert(c).select().single();
+  const { data, error } = await q;
+  if (error) throw error;
+  return data as FuelCard;
+}
+
+export async function deleteCard(id: string): Promise<void> {
+  const { error } = await db().from("fleet_fuel_cards").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function listStatements(): Promise<CardStatement[]> {
+  const { data, error } = await db()
+    .from("fleet_card_statements").select("*").order("period", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as CardStatement[];
+}
+
+export async function listStatementLines(statementId: string): Promise<StatementLine[]> {
+  const { data, error } = await db()
+    .from("fleet_card_statement_lines").select("*").eq("statement_id", statementId);
+  if (error) throw error;
+  return (data ?? []) as StatementLine[];
+}
+
+/** บันทึกใบแจ้งยอด 1 รอบ พร้อมยอดรายบัตร (เขียนทับรอบเดิมถ้ามี) */
+export async function saveStatement(
+  head: Partial<CardStatement>,
+  lines: { card_id: string; vehicle_id: string | null; account_name: string | null; amount: number; txn_count: number | null }[],
+): Promise<CardStatement> {
+  const { data, error } = await db().from("fleet_card_statements")
+    .upsert({ ...head, provider: head.provider ?? "KBANK Fleet Card" }, { onConflict: "period,provider" })
+    .select().single();
+  if (error) throw error;
+  const st = data as CardStatement;
+  await db().from("fleet_card_statement_lines").delete().eq("statement_id", st.id);
+  if (lines.length) {
+    const { error: e2 } = await db().from("fleet_card_statement_lines")
+      .insert(lines.map((l) => ({ ...l, statement_id: st.id })));
+    if (e2) throw e2;
+  }
+  return st;
 }
 
 // ---------- ใบกำกับภาษี (เฟส 7) ----------

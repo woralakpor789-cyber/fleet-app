@@ -220,6 +220,43 @@ export type FuelLog = {
 
 export const FUEL_TYPES = ["ดีเซล", "เบนซิน", "แก๊สโซฮอล์", "LPG", "อื่นๆ"];
 
+// ---------- เฟส 8: ฟลีทการ์ด + ใบแจ้งยอดรายเดือน ----------
+
+export type FuelCard = {
+  id: string;
+  card_no: string;
+  account_name: string | null;
+  vehicle_id: string | null;
+  provider: string | null;
+  credit_limit: number | null;
+  active: boolean;
+  note: string | null;
+  created_at: string;
+};
+
+export type CardStatement = {
+  id: string;
+  period: string;            // YYYY-MM
+  statement_date: string | null;
+  due_date: string | null;
+  provider: string | null;
+  total_amount: number | null;
+  file_path: string | null;
+  note: string | null;
+  created_at: string;
+};
+
+export type StatementLine = {
+  id: string;
+  statement_id: string;
+  card_id: string | null;
+  vehicle_id: string | null;
+  account_name: string | null;
+  amount: number;
+  txn_count: number | null;
+  note: string | null;
+};
+
 /** สถานะใบกำกับภาษี — เรียงตามลำดับที่เกิดจริง */
 export const INVOICE_STATUSES = [
   "รอคนขับส่ง",      // รู้ว่ามีการเติม แต่ยังไม่เห็นใบเลย
