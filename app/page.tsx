@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Truck } from "lucide-react";
 import GoogleLoginButton, { type GoogleUser } from "@/components/GoogleLoginButton";
+import BrowserWarning from "@/components/BrowserWarning";
 import { checkFleetAccess, getStoredUser, signOut, storeUser } from "@/lib/auth";
 
 export default function LoginPage() {
@@ -50,7 +51,10 @@ export default function LoginPage() {
         {checking ? (
           <p className="text-slate-400 text-sm">กำลังตรวจสอบสิทธิ์…</p>
         ) : (
-          <GoogleLoginButton onSuccess={handleLogin} onError={setError} />
+          <>
+            <BrowserWarning />
+            <GoogleLoginButton onSuccess={handleLogin} onError={setError} />
+          </>
         )}
         {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
         <p className="mt-6 text-xs text-slate-400">เฉพาะเจ้าหน้าที่ backoffice ที่ได้รับสิทธิ์</p>

@@ -75,7 +75,14 @@ export default function GoogleLoginButton({
     const render = (): boolean => {
       const g = window.google;
       if (!g?.accounts?.id || !divRef.current) return false;
-      g.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handle });
+      g.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handle,
+        // ช่วยให้ล็อกอินผ่านบน Safari/iOS ที่บล็อกคุกกี้บุคคลที่สาม
+        itp_support: true,
+        use_fedcm_for_prompt: true,
+        auto_select: false,
+      });
       g.accounts.id.renderButton(divRef.current, {
         theme: "outline",
         size: "large",

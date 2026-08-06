@@ -11,6 +11,7 @@ import {
   Send, ShieldAlert, Truck,
 } from "lucide-react";
 import GoogleLoginButton, { type GoogleUser } from "@/components/GoogleLoginButton";
+import BrowserWarning from "@/components/BrowserWarning";
 import { FUEL_TYPES } from "@/lib/types";
 import { signOut } from "@/lib/auth";
 import { ocrImage } from "@/lib/docImport/imageOcr";
@@ -88,6 +89,7 @@ function DriverInner() {
         <div className="p-6 text-center">
           <p className="text-slate-600 mb-1">เข้าใช้งานด้วยบัญชี Google ของคุณ</p>
           <p className="text-xs text-slate-400 mb-5">ต้องเป็นบัญชีที่ออฟฟิศอนุมัติไว้แล้ว</p>
+          <BrowserWarning />
           <GoogleLoginButton onSuccess={onLogin} onError={setLoginErr} />
           {loginErr && <p className="mt-4 text-sm text-red-600">{loginErr}</p>}
         </div>
