@@ -212,6 +212,28 @@ export type FuelLog = {
 
 export const FUEL_TYPES = ["ดีเซล", "เบนซิน", "แก๊สโซฮอล์", "LPG", "อื่นๆ"];
 
+/** บิลที่คนขับส่งเข้ามา รอ backoffice ตรวจ (เฟส 6F) */
+export type FuelSubmission = {
+  id: string;
+  vehicle_id: string;
+  driver_name: string;
+  driver_phone: string | null;
+  fill_date: string;
+  odometer: number | null;
+  liters: number;
+  amount: number;
+  fuel_type: string | null;
+  station: string | null;
+  file_path: string | null;
+  note: string | null;
+  status: string;                 // รอตรวจ/อนุมัติ/ปฏิเสธ
+  reject_reason: string | null;
+  fuel_log_id: string | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  created_at: string;
+};
+
 export type FuelFlag = "odo_backward" | "high_consumption" | "frequent";
 export const FUEL_FLAG_LABELS: Record<FuelFlag, string> = {
   odo_backward: "เลขไมล์ย้อนหลัง",

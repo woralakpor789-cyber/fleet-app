@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Car, FileText, Wrench, Fuel, BarChart3, LayoutDashboard, LogOut, Truck,
+  Car, FileText, Wrench, Fuel, BarChart3, LayoutDashboard, LogOut, Truck, UserCheck,
 } from "lucide-react";
 import { checkFleetAccess, getStoredUser, signOut, type FleetUser } from "@/lib/auth";
 
@@ -16,6 +16,7 @@ const MENU = [
   { href: "/maintenance", label: "ซ่อมบำรุง",        icon: Wrench },
   { href: "/fuel",        label: "น้ำมัน",           icon: Fuel },
   { href: "/reports",     label: "รายงาน",           icon: BarChart3 },
+  { href: "/drivers",     label: "คนขับ/QR",         icon: UserCheck },
 ];
 
 export default function FleetShell({ children }: { children: React.ReactNode }) {

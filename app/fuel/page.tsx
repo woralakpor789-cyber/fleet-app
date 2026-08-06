@@ -12,7 +12,9 @@ import {
   FUEL_FLAG_LABELS, FUEL_TYPES, enrichFuelLogs, fmtBaht, fmtDate,
   type FuelLog, type FuelLogEnriched, type Vehicle,
 } from "@/lib/types";
-import { listFuelLogs, listVehicles, saveFuelLog, softDeleteFuelLog } from "@/lib/fleetApi";
+import { listFuelLogs, listSubmissions, listVehicles, saveFuelLog, softDeleteFuelLog } from "@/lib/fleetApi";
+import FuelReview from "@/components/FuelReview";
+import type { FuelSubmission } from "@/lib/types";
 
 export default function FuelPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -23,11 +25,13 @@ export default function FuelPage() {
   const [fMonth, setFMonth] = useState("");   // "2026-08"
   const [editing, setEditing] = useState<Partial<FuelLog> | null>(null);
   const [importing, setImporting] = useState(false);
+  const [subs, setSubs] = useState<FuelSubmission[]>([]);
+  const [tab, setTab] = useState<"logs" | "review">("logs");
 
   const reload = async () => {
     try {
-      const [v, l] = await Promise.all([listVehicles(), listFuelLogs()]);
-      setVehicles(v); setLogs(l); setErr("");
+      const [v, l, s] = await Promise.all([listVehicles(), listFuelLogs(), listSubmissions()]);
+      setVehicles(v); setLogs(l); setSubs(s); setErr("");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "โหลดข้อมูลไม่สำเร็จ");
     } finally {
@@ -49,6 +53,8 @@ export default function FuelPage() {
       (!fMonth || l.fill_date.startsWith(fMonth))),
     [enriched, fVehicle, fMonth]
   );
+
+  const nPending = subs.filter((s) => s.status === "รอตรวจ").length;
 
   // สรุปเดือนปัจจุบัน + ธงทั้งหมด
   const thisMonth = new Date().toISOString().slice(0, 7);
@@ -96,6 +102,22 @@ export default function FuelPage() {
         </div>
       </div>
 
+      {/* แท็บ: รายการเติม / บิลรอตรวจจากคนขับ */}
+      <div className="flex gap-2 mb-4">
+        {([["logs", "รายการเติม"], ["review", `บิลรอตรวจ${nPending ? ` (${nPending})` : ""}`]] as const).map(([k, label]) => (
+          <button key={k} onClick={() => setTab(k)}
+            className={`px-4 py-1.5 rounded-full text-sm ${
+              tab === k ? "bg-teal-600 text-white font-medium"
+                : k === "review" && nPending ? "bg-amber-50 border border-amber-300 text-amber-800 font-medium"
+                : "bg-white border border-slate-200 text-slate-600"
+            }`}>{label}</button>
+        ))}
+      </div>
+
+      {tab === "review" ? (
+        <FuelReview rows={subs} vehicles={vehicles} onChanged={reload} />
+      ) : (
+      <>
       {/* สรุป */}
       <div className="grid grid-cols-3 gap-3 mb-4 max-w-2xl">
         <div className="rounded-2xl border border-slate-200 bg-white p-3">
@@ -203,6 +225,9 @@ export default function FuelPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      </>
       )}
 
       {editing && (

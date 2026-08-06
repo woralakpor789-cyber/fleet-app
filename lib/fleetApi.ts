@@ -1,6 +1,8 @@
 // ตัวเชื่อม Supabase สำหรับตาราง fleet_* — ทุกฟังก์ชัน throw ถ้าไม่มี Supabase env
 import { supabase } from "./supabaseClient";
-import type { Claim, FuelLog, MaintLog, MaintPlan, Tire, Vehicle, VehicleDoc } from "./types";
+import type {
+  Claim, FuelLog, FuelSubmission, MaintLog, MaintPlan, Tire, Vehicle, VehicleDoc,
+} from "./types";
 
 function db() {
   if (!supabase) throw new Error("ยังไม่ได้ตั้งค่า Supabase (.env.local)");
@@ -215,6 +217,44 @@ export async function saveFuelLog(
     await db().from("fleet_vehicles").update({ odometer: saved.odometer }).eq("id", v.id);
   }
   return saved;
+}
+
+// ---------- บิลที่คนขับส่งเข้ามา (รอตรวจ) ----------
+export async function listSubmissions(): Promise<FuelSubmission[]> {
+  const { data, error } = await db()
+    .from("fleet_fuel_submissions").select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as FuelSubmission[];
+}
+
+/** อนุมัติ → สร้าง fuel log จริง แล้วผูกกลับไปที่ใบที่ส่งมา */
+export async function approveSubmission(
+  s: FuelSubmission,
+  patch: Partial<FuelSubmission>,
+  reviewer: string,
+  vehicle?: Vehicle,
+): Promise<void> {
+  const m = { ...s, ...patch };
+  const log = await saveFuelLog({
+    vehicle_id: m.vehicle_id, fill_date: m.fill_date, odometer: m.odometer ?? null,
+    liters: m.liters, amount: m.amount, fuel_type: m.fuel_type, station: m.station,
+    full_tank: true, file_path: m.file_path,
+    note: `คนขับส่ง: ${m.driver_name}${m.driver_phone ? ` (${m.driver_phone})` : ""}`,
+  }, { vehicle });
+  const { error } = await db().from("fleet_fuel_submissions").update({
+    ...patch, status: "อนุมัติ", fuel_log_id: log.id,
+    reviewed_at: new Date().toISOString(), reviewed_by: reviewer,
+  }).eq("id", s.id);
+  if (error) throw error;
+}
+
+export async function rejectSubmission(id: string, reason: string, reviewer: string): Promise<void> {
+  const { error } = await db().from("fleet_fuel_submissions").update({
+    status: "ปฏิเสธ", reject_reason: reason,
+    reviewed_at: new Date().toISOString(), reviewed_by: reviewer,
+  }).eq("id", id);
+  if (error) throw error;
 }
 
 export async function softDeleteFuelLog(id: string): Promise<void> {
