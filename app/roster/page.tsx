@@ -9,7 +9,7 @@ import {
   fillRosterMonth, listStaff, listVehicles, loadRoster, setRosterCell,
   type RosterCell, type Staff,
 } from "@/lib/fleetApi";
-import type { Vehicle } from "@/lib/types";
+import { isRetired, type Vehicle } from "@/lib/types";
 
 const thisMonth = () => new Date().toISOString().slice(0, 7);
 // ย่อชื่อให้พอดีช่อง: "นายธีรศักดิ์ แก้วบุตร" → "ธีรศักดิ์"
@@ -51,7 +51,7 @@ export default function RosterPage() {
   const reload = async () => {
     try {
       const [v, s, r] = await Promise.all([listVehicles(), listStaff(), loadRoster(period)]);
-      setVehicles(v.filter((x) => x.status !== "ขายแล้ว"));
+      setVehicles(v.filter((x) => !isRetired(x)));
       setStaff(s);
       setCells(new Map(r.map((c) => [`${c.vehicle_id}|${c.work_date}`, c])));
       setErr("");

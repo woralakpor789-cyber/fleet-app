@@ -6,7 +6,7 @@ import FleetShell from "@/components/FleetShell";
 import { BarChart3, Download, FileSpreadsheet } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
-  bookValue, fmtBaht, fmtDate,
+  bookValue, disposalGain, fmtBaht, fmtDate,
   type Claim, type FuelLog, type MaintLog, type Tire, type Vehicle, type VehicleDoc,
 } from "@/lib/types";
 import {
@@ -104,7 +104,8 @@ export default function ReportsPage() {
       [],
       ["ทะเบียน", "ประเภท", "ยี่ห้อ/รุ่น", "เลขตัวถัง", "เลขเครื่อง", "จังหวัด", "สาขา",
         "วันที่ซื้อ", "ราคาซื้อ", "อายุค่าเสื่อม (ปี)", "ซาก (%)", "ค่าเสื่อมสะสม",
-        "มูลค่าตามบัญชี", "สถานะ", "กรรมสิทธิ์"],
+        "มูลค่าตามบัญชี", "สถานะ", "กรรมสิทธิ์",
+        "วันที่ปลดประจำการ", "วิธีปลด", "เงินที่ได้รับ", "กำไร/ขาดทุนจากการปลด"],
       ...vehicles.map((v) => {
         const bv = bookValue(v);
         const accDep = v.purchase_price != null && bv != null ? v.purchase_price - bv : null;
@@ -115,6 +116,8 @@ export default function ReportsPage() {
           v.depreciation_years ?? 5, v.salvage_pct ?? 10,
           accDep != null ? Math.round(accDep) : "", bv != null ? Math.round(bv) : "",
           v.status, v.finance_status ?? "",
+          v.disposal_date ?? "", v.disposal_type ?? "", v.disposal_price ?? "",
+          (() => { const g = disposalGain(v); return g == null ? "" : Math.round(g); })(),
         ];
       }),
     ]

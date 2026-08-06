@@ -18,10 +18,17 @@ export type Vehicle = {
   purchase_price: number | null;
   depreciation_years: number | null;
   salvage_pct: number | null;
-  status: string;                // ใช้งาน/ซ่อม/ขายแล้ว
+  status: string;                // ใช้งาน/ซ่อม/ขายแล้ว/ปลดประจำการ
   finance_status: string | null; // ปลอดภาระ/มีเล่มแล้ว · ไฟแนนซ์ (คนละเรื่องกับ status)
   odometer: number | null;
   note: string | null;
+  // ---- ปลดประจำการ ----
+  in_service_from: string | null;
+  disposal_date: string | null;   // มีค่า = ปลดแล้ว
+  disposal_type: string | null;
+  disposal_price: number | null;
+  disposal_to: string | null;
+  disposal_note: string | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -60,7 +67,20 @@ export type Claim = {
 
 // กติกา: FleetOS ดูแลเฉพาะยานพาหนะบริษัท — ไม่มีโฟล์คลิฟท์ (โฟล์คลิฟท์อยู่ระบบ SalesOS แยกขาดจากกัน)
 export const VTYPES = ["เก๋ง", "กระบะ", "บรรทุก", "เทรลเลอร์", "อื่นๆ"];
-export const VEHICLE_STATUSES = ["ใช้งาน", "ซ่อม", "ขายแล้ว"];
+export const VEHICLE_STATUSES = ["ใช้งาน", "ซ่อม", "ขายแล้ว", "ปลดประจำการ"];
+export const DISPOSAL_TYPES = ["ขาย", "เทิร์นซื้อคันใหม่", "ตัดจำหน่าย", "คืนไฟแนนซ์", "อุบัติเหตุเสียหาย", "อื่นๆ"];
+
+/** ปลดประจำการแล้วหรือยัง */
+export const isRetired = (v: Vehicle) =>
+  !!v.disposal_date || v.status === "ขายแล้ว" || v.status === "ปลดประจำการ";
+
+/** กำไร/ขาดทุนจากการปลดประจำการ = ราคาที่ได้ − มูลค่าตามบัญชี ณ วันปลด */
+export function disposalGain(v: Vehicle): number | null {
+  if (!v.disposal_date || v.disposal_price == null) return null;
+  const bv = bookValue(v, new Date(v.disposal_date));
+  if (bv == null) return null;
+  return v.disposal_price - bv;
+}
 export const FINANCE_STATUSES = ["ปลอดภาระ/มีเล่มแล้ว", "ไฟแนนซ์"];
 export const BRANCHES = ["สมุทรปราการ", "ชลบุรี", "ขอนแก่น"];
 export const DOC_TYPES = ["พ.ร.บ.", "ประกันภัย", "ภาษีประจำปี", "ตรวจสภาพ", "อื่นๆ"];
