@@ -275,6 +275,48 @@ export async function saveStatement(
   return st;
 }
 
+// ---------- รายการรูดบัตรทีละครั้ง + ตามใบกำกับ (เฟส 8B) ----------
+
+export type CardTxn = {
+  id: string;
+  trans_date: string;
+  plate: string | null;
+  vehicle_id: string | null;
+  station: string | null;
+  province: string | null;
+  amount: number;
+  driver: string | null;
+  invoice_status: string;
+  chase_note: string | null;
+  matched_log_id: string | null;
+  matched_invoice_no: string | null;
+};
+
+export const TXN_INVOICE_STATUSES = ["ยังไม่ได้ใบ", "ได้ใบแล้ว", "ส่งบัญชีแล้ว", "หาย", "ไม่มีใบกำกับ"];
+
+export async function listCardTxns(period: string): Promise<CardTxn[]> {
+  const { data, error } = await db().rpc("card_txns_for_period", { p_period: period });
+  if (error) throw error;
+  return (data ?? []) as CardTxn[];
+}
+
+/** จับคู่รายการรูดกับใบกำกับที่บันทึกไว้อัตโนมัติ — คืนจำนวนที่จับคู่ได้ */
+export async function matchCardTxns(period: string): Promise<number> {
+  const { data, error } = await db().rpc("match_card_txns", { p_period: period });
+  if (error) throw error;
+  return (data as number) ?? 0;
+}
+
+export async function updateCardTxns(
+  ids: string[],
+  patch: { invoice_status?: string; chase_note?: string | null },
+): Promise<void> {
+  if (!ids.length) return;
+  const { error } = await db().from("fleet_card_transactions")
+    .update({ ...patch, updated_at: new Date().toISOString() }).in("id", ids);
+  if (error) throw error;
+}
+
 // ---------- ใบกำกับภาษี (เฟส 7) ----------
 
 /** อัปเดตสถานะใบกำกับของหลายรายการพร้อมกัน (เช่น รับคืนจากคนขับทีเดียวหลายใบ) */

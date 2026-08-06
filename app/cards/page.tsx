@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from "react";
 import FleetShell from "@/components/FleetShell";
 import { AlertTriangle, CheckCircle2, CreditCard, Save, Scale, Trash2 } from "lucide-react";
+import ChaseList from "@/components/ChaseList";
 import {
   fmtBaht, fmtDate,
   type CardStatement, type FuelCard, type FuelLog, type StatementLine, type Vehicle,
@@ -26,7 +27,7 @@ export default function CardsPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
-  const [tab, setTab] = useState<"reconcile" | "cards">("reconcile");
+  const [tab, setTab] = useState<"reconcile" | "chase" | "cards">("reconcile");
 
   // ค่าที่กำลังคีย์ (การ์ด id → ยอด/จำนวนครั้ง)
   const [amt, setAmt] = useState<Record<string, string>>({});
@@ -134,13 +135,13 @@ export default function CardsPage() {
       </h1>
 
       <div className="flex gap-2 mb-4 flex-wrap items-center">
-        {([["reconcile", "ใบแจ้งยอด & กระทบยอด"], ["cards", `บัตรทั้งหมด (${cards.length})`]] as const).map(([k, label]) => (
+        {([["reconcile", "ใบแจ้งยอด & กระทบยอด"], ["chase", "ตามใบกำกับรายใบ"], ["cards", `บัตรทั้งหมด (${cards.length})`]] as const).map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`px-4 py-1.5 rounded-full text-sm ${
               tab === k ? "bg-teal-600 text-white font-medium" : "bg-white border border-slate-200 text-slate-600"
             }`}>{label}</button>
         ))}
-        {tab === "reconcile" && (
+        {tab !== "cards" && (
           <input type="month" value={period} onChange={(e) => setPeriod(e.target.value)}
             className="ml-auto rounded-xl border border-slate-200 bg-white text-sm px-3 py-2" />
         )}
@@ -153,6 +154,8 @@ export default function CardsPage() {
       {!loading && tab === "cards" && (
         <CardTable cards={cards} vehicles={vehicles} onChanged={reload} />
       )}
+
+      {tab === "chase" && <ChaseList period={period} />}
 
       {!loading && tab === "reconcile" && (
         <>
