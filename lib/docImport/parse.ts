@@ -36,16 +36,18 @@ export function platesFromName(path: string): string[] {
  */
 export function matchVehicle(path: string, vehicles: Vehicle[]): Vehicle | null {
   const cands = platesFromName(path).map(normalizePlate);
+  // เทียบทั้งทะเบียนปัจจุบันและทะเบียนเดิม (เอกสารเก่ายังใช้ทะเบียนเดิมอยู่)
+  const platesOf = (v: Vehicle) =>
+    [v.plate, v.previous_plate].filter(Boolean).map((p) => normalizePlate(p as string));
+
   for (const v of vehicles) {
-    const p = normalizePlate(v.plate);
-    if (p && cands.includes(p)) return v;
+    if (platesOf(v).some((p) => p && cands.includes(p))) return v;
   }
   const whole = normalizePlate(path);
   // เรียงทะเบียนยาวก่อน กันกรณีทะเบียนสั้นไปตรงกับส่วนหนึ่งของทะเบียนยาว
   const sorted = [...vehicles].sort((a, b) => b.plate.length - a.plate.length);
   for (const v of sorted) {
-    const p = normalizePlate(v.plate);
-    if (p.length >= 5 && whole.includes(p)) return v;
+    if (platesOf(v).some((p) => p.length >= 5 && whole.includes(p))) return v;
   }
   return null;
 }

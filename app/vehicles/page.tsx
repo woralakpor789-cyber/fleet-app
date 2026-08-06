@@ -58,7 +58,7 @@ export default function VehiclesPage() {
         if (fBranch && v.branch !== fBranch) return false;
         const s = q.trim().toLowerCase();
         if (!s) return true;
-        return [v.plate, v.nickname, v.brand, v.model, v.driver_name]
+        return [v.plate, v.previous_plate, v.nickname, v.brand, v.model, v.driver_name]
           .some((x) => x?.toLowerCase().includes(s));
       }),
     [rows, q, fType, fBranch, showRetired]
@@ -139,6 +139,9 @@ export default function VehiclesPage() {
                     <div className="font-semibold text-slate-800">{v.plate}</div>
                     <div className="text-xs text-slate-400">
                       {v.plate_province ?? ""} {v.nickname ? `· ${v.nickname}` : ""}
+                      {v.previous_plate && (
+                        <span className="text-slate-400"> · เดิม {v.previous_plate}</span>
+                      )}
                     </div>
                   </td>
                   <td className="px-2 py-2.5">{v.vtype}</td>
@@ -225,7 +228,8 @@ function VehicleModal({
     try {
       // ส่งเฉพาะฟิลด์ของตาราง (กัน field แปลกปลอมตอนแก้ไข)
       const payload: Partial<Vehicle> & { id?: string } = {
-        id: f.id, plate: f.plate.trim(), plate_province: f.plate_province || null,
+        id: f.id, plate: f.plate.trim(), previous_plate: f.previous_plate || null,
+        plate_province: f.plate_province || null,
         vtype: f.vtype || "อื่นๆ", nickname: f.nickname || null, brand: f.brand || null,
         model: f.model || null, year: f.year || null, vin: f.vin || null,
         engine_no: f.engine_no || null, color: f.color || null, branch: f.branch || null,
@@ -259,6 +263,10 @@ function VehicleModal({
           <SectionHead n={1} title="ข้อมูลรถ" hint="ระบุตัวรถ — ใช้ทุกหน้าในระบบ" />
           <div><span className={lbl}>เลขทะเบียน *</span>
             <input className={inp} value={f.plate ?? ""} onChange={(e) => set("plate", e.target.value)} /></div>
+          <div><span className={lbl}>ทะเบียนเดิม (ถ้าเคยย้ายทะเบียน)</span>
+            <input className={inp} value={f.previous_plate ?? ""} placeholder="เช่น 72-7262"
+              onChange={(e) => set("previous_plate", e.target.value || null)} />
+          </div>
           <div><span className={lbl}>จังหวัดทะเบียน</span>
             <input className={inp} value={f.plate_province ?? ""} onChange={(e) => set("plate_province", e.target.value)} /></div>
           <div><span className={lbl}>ประเภท</span>

@@ -3,6 +3,7 @@
 export type Vehicle = {
   id: string;
   plate: string;
+  previous_plate: string | null; // ทะเบียนเดิมก่อนย้ายทะเบียน — ใช้จับคู่เอกสารเก่า
   plate_province: string | null;
   vtype: string;                 // เก๋ง/SUV/กระบะ/บรรทุก/เทรลเลอร์/อื่นๆ
   nickname: string | null;
