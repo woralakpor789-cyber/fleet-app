@@ -199,8 +199,9 @@ export type FuelLog = {
   vehicle_id: string;
   fill_date: string;
   odometer: number | null;
-  liters: number;
+  liters: number | null;      // null = มาจากใบแจ้งยอดบัตร ยังไม่รู้ลิตร (เติมทีหลังจากใบกำกับ)
   amount: number;
+  source: string | null;      // บัตรน้ำมัน / คนขับส่ง / กรอกเอง
   fuel_type: string | null;
   station: string | null;
   full_tank: boolean;
@@ -337,7 +338,7 @@ export function enrichFuelLogs(logs: FuelLog[]): FuelLogEnriched[] {
         distance = l.odometer - prevOdo;
         if (distance <= 0) { flags.push("odo_backward"); distance = null; }
       }
-      const kmPerL = distance != null && l.liters > 0 ? distance / l.liters : null;
+      const kmPerL = distance != null && (l.liters ?? 0) > 0 ? distance / l.liters! : null;
       const bahtPerKm = distance != null && distance > 0 ? l.amount / distance : null;
       if ((dateCount.get(l.fill_date) ?? 0) > 1) flags.push("frequent");
       if (l.odometer != null) prevOdo = l.odometer;

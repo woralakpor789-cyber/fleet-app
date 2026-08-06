@@ -60,7 +60,8 @@ export default function FuelPage() {
   const thisMonth = new Date().toISOString().slice(0, 7);
   const monthLogs = enriched.filter((l) => l.fill_date.startsWith(thisMonth));
   const monthAmount = monthLogs.reduce((s, l) => s + l.amount, 0);
-  const monthLiters = monthLogs.reduce((s, l) => s + l.liters, 0);
+  const monthLiters = monthLogs.reduce((s, l) => s + (l.liters ?? 0), 0);
+  const noLiters = logs.filter((l) => l.liters == null).length;
   const nFlagged = enriched.filter((l) => l.flags.length).length;
 
   // กราฟ: รวมรายเดือน 6 เดือนล่าสุด (ตามฟิลเตอร์รถ)
@@ -134,6 +135,13 @@ export default function FuelPage() {
           <div className={`text-xs ${nFlagged ? "" : "text-slate-500"}`}>รายการติดธงเตือน</div>
           <div className="text-xl font-bold mt-1">{nFlagged}</div>
         </div>
+        {noLiters > 0 && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 col-span-3 md:col-span-1">
+            <div className="text-xs text-amber-800">ยังไม่ทราบจำนวนลิตร</div>
+            <div className="text-xl font-bold text-amber-800 mt-1">{noLiters}</div>
+            <div className="text-[10px] text-amber-700">มาจากใบแจ้งยอดบัตร — เติมลิตรจากใบกำกับเพื่อคำนวณ กม./ลิตร</div>
+          </div>
+        )}
       </div>
 
       {/* ฟิลเตอร์ */}
@@ -251,10 +259,14 @@ function FuelRow({ l, name, onEdit, onDelete }: {
       <td className="px-4 py-2.5">{fmtDate(l.fill_date)}</td>
       <td className="px-2 py-2.5 font-medium text-slate-800">{name}</td>
       <td className="px-2 py-2.5 text-right">{l.odometer != null ? l.odometer.toLocaleString() : "—"}</td>
-      <td className="px-2 py-2.5 text-right">{l.liters.toLocaleString("th-TH", { maximumFractionDigits: 1 })}</td>
+      <td className="px-2 py-2.5 text-right">
+        {l.liters != null
+          ? l.liters.toLocaleString("th-TH", { maximumFractionDigits: 1 })
+          : <span className="text-amber-600 text-xs">ยังไม่ทราบ</span>}
+      </td>
       <td className="px-2 py-2.5 text-right">{fmtBaht(l.amount)}</td>
       <td className="px-2 py-2.5 text-right text-slate-500">
-        {l.liters > 0 ? (l.amount / l.liters).toFixed(2) : "—"}
+        {(l.liters ?? 0) > 0 ? (l.amount / l.liters!).toFixed(2) : "—"}
       </td>
       <td className="px-2 py-2.5 text-right">
         {l.kmPerL != null ? l.kmPerL.toFixed(1) : "—"}
@@ -296,13 +308,12 @@ function FuelModal({ init, vehicles, onClose, onSaved }: {
   const save = async () => {
     if (!f.vehicle_id) { setErr("เลือกรถ"); return; }
     if (!f.fill_date) { setErr("กรอกวันที่"); return; }
-    if (!f.liters || f.liters <= 0) { setErr("กรอกจำนวนลิตร"); return; }
     if (!f.amount || f.amount <= 0) { setErr("กรอกยอดจ่าย (บาท)"); return; }
     setSaving(true);
     try {
       await saveFuelLog({
         id: f.id, vehicle_id: f.vehicle_id, fill_date: f.fill_date,
-        odometer: f.odometer || null, liters: f.liters, amount: f.amount,
+        odometer: f.odometer || null, liters: f.liters || null, amount: f.amount,
         fuel_type: f.fuel_type || null, station: f.station || null,
         full_tank: f.full_tank ?? true, note: f.note || null,
       }, { vehicle });
@@ -331,7 +342,7 @@ function FuelModal({ init, vehicles, onClose, onSaved }: {
           <div><span className={lbl}>เลขไมล์ (กม.) — แนะนำใส่ทุกครั้ง</span>
             <input type="number" className={inp} value={f.odometer ?? ""}
               onChange={(e) => set("odometer", e.target.value ? +e.target.value : null)} /></div>
-          <div><span className={lbl}>จำนวนลิตร *</span>
+          <div><span className={lbl}>จำนวนลิตร (เว้นได้ถ้ายังไม่ทราบ)</span>
             <input type="number" step="0.01" className={inp} value={f.liters ?? ""}
               onChange={(e) => set("liters", e.target.value ? +e.target.value : null)} /></div>
           <div><span className={lbl}>ยอดจ่าย (บาท) *</span>

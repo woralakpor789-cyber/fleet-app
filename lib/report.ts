@@ -76,7 +76,9 @@ export function buildTimeline(
   for (const x of fuel.filter((x) => x.vehicle_id === vehicleId)) {
     ev.push({
       date: x.fill_date, kind: "น้ำมัน",
-      title: `เติม ${x.liters.toLocaleString("th-TH", { maximumFractionDigits: 1 })} ลิตร${x.fuel_type ? ` (${x.fuel_type})` : ""}`,
+      title: x.liters != null
+        ? `เติม ${x.liters.toLocaleString("th-TH", { maximumFractionDigits: 1 })} ลิตร${x.fuel_type ? ` (${x.fuel_type})` : ""}`
+        : `เติมน้ำมัน${x.fuel_type ? ` (${x.fuel_type})` : ""} — ยังไม่ทราบลิตร`,
       detail: [x.station, x.odometer != null ? `${x.odometer.toLocaleString()} กม.` : null].filter(Boolean).join(" · "),
       amount: x.amount,
     });

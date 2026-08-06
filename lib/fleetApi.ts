@@ -448,6 +448,33 @@ export async function approveSubmission(
   vehicle?: Vehicle,
 ): Promise<void> {
   const m = { ...s, ...patch };
+  // ถ้ามีรายการจากใบแจ้งยอดบัตรที่ตรงกันอยู่แล้ว → เติมข้อมูลใส่รายการเดิม ไม่สร้างซ้ำ (กันต้นทุนเบิ้ล)
+  const dFrom = new Date(m.fill_date); dFrom.setDate(dFrom.getDate() - 2);
+  const dTo = new Date(m.fill_date); dTo.setDate(dTo.getDate() + 2);
+  const { data: dup } = await db().from("fleet_fuel_logs").select("id")
+    .eq("vehicle_id", m.vehicle_id).eq("amount", m.amount)
+    .is("deleted_at", null).is("liters", null)
+    .gte("fill_date", dFrom.toISOString().slice(0, 10))
+    .lte("fill_date", dTo.toISOString().slice(0, 10))
+    .limit(1);
+  if (dup && dup.length) {
+    const id = (dup[0] as { id: string }).id;
+    const { error } = await db().from("fleet_fuel_logs").update({
+      liters: m.liters, odometer: m.odometer ?? null, station: m.station,
+      fuel_type: m.fuel_type, file_path: m.file_path,
+      tax_invoice_no: m.tax_invoice_no ?? null,
+      invoice_status: "คนขับถือไว้", invoice_holder: m.driver_name,
+      source: "คนขับส่ง",
+      note: `คนขับส่ง: ${m.driver_name} · จับคู่กับรายการรูดบัตร`,
+    }).eq("id", id);
+    if (error) throw error;
+    const { error: e2 } = await db().from("fleet_fuel_submissions").update({
+      ...patch, status: "อนุมัติ", fuel_log_id: id,
+      reviewed_at: new Date().toISOString(), reviewed_by: reviewer,
+    }).eq("id", s.id);
+    if (e2) throw e2;
+    return;
+  }
   const log = await saveFuelLog({
     vehicle_id: m.vehicle_id, fill_date: m.fill_date, odometer: m.odometer ?? null,
     liters: m.liters, amount: m.amount, fuel_type: m.fuel_type, station: m.station,
