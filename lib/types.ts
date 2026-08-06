@@ -4,7 +4,7 @@ export type Vehicle = {
   id: string;
   plate: string;
   plate_province: string | null;
-  vtype: string;                 // เก๋ง/กระบะ/บรรทุก/เทรลเลอร์/อื่นๆ
+  vtype: string;                 // เก๋ง/SUV/กระบะ/บรรทุก/เทรลเลอร์/อื่นๆ
   nickname: string | null;
   brand: string | null;
   model: string | null;
@@ -66,7 +66,7 @@ export type Claim = {
 };
 
 // กติกา: FleetOS ดูแลเฉพาะยานพาหนะบริษัท — ไม่มีโฟล์คลิฟท์ (โฟล์คลิฟท์อยู่ระบบ SalesOS แยกขาดจากกัน)
-export const VTYPES = ["เก๋ง", "กระบะ", "บรรทุก", "เทรลเลอร์", "อื่นๆ"];
+export const VTYPES = ["เก๋ง", "SUV", "กระบะ", "บรรทุก", "เทรลเลอร์", "อื่นๆ"];
 export const VEHICLE_STATUSES = ["ใช้งาน", "ซ่อม", "ขายแล้ว", "ปลดประจำการ"];
 export const DISPOSAL_TYPES = ["ขาย", "เทิร์นซื้อคันใหม่", "ตัดจำหน่าย", "คืนไฟแนนซ์", "อุบัติเหตุเสียหาย", "อื่นๆ"];
 
